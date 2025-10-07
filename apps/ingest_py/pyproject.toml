@@ -1,0 +1,18 @@
+[project]
+name = "ingest_py"
+version = "0.1.0"
+description = "Microservicio FastAPI para consultar la API de la Rama Judicial"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.dependencies]
+fastapi = "^0.110.0"
+uvicorn = { extras = ["standard"], version = "^0.22.0" }
+httpx = "^0.27.0"
+pydantic = "^2.0.0"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

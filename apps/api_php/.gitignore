@@ -1,0 +1,22 @@
+﻿# Environment
+/.env
+/.env.*
+
+# Vendor & storage
+/vendor/
+/storage/
+
+# Databases
+database/database.sqlite
+
+# Node build artefacts
+/node_modules
+/public/hot
+/public/storage
+/public/build
+
+# Cache files
+.phpunit.result.cache
+*.log
+.DS_Store
+Thumbs.db
