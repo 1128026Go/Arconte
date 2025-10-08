@@ -1,6 +1,7 @@
 ﻿# Environment
 /.env
 /.env.*
+!/.env.example
 
 # Vendor & storage
 /vendor/
