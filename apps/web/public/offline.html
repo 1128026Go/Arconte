@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sin Conexión - Arconte</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        p {
+            font-size: 18px;
+            opacity: 0.9;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .features {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            text-align: left;
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            margin: 16px 0;
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            margin-right: 16px;
+        }
+
+        .button {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 14px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .status {
+            margin-top: 24px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📡</div>
+        <h1>Sin Conexión a Internet</h1>
+        <p>No te preocupes, Arconte sigue funcionando en modo offline con funcionalidades limitadas.</p>
+
+        <div class="features">
+            <div class="feature">
+                <span class="feature-icon">✅</span>
+                <span>Ver casos guardados localmente</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">✅</span>
+                <span>Leer documentos descargados</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">✅</span>
+                <span>Crear notas y recordatorios</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">⏳</span>
+                <span>Tus cambios se sincronizarán automáticamente</span>
+            </div>
+        </div>
+
+        <a href="/" class="button" onclick="location.reload(); return false;">
+            Intentar de Nuevo
+        </a>
+
+        <div class="status" id="status">
+            Verificando conexión...
+        </div>
+    </div>
+
+    <script>
+        // Verificar conexión periódicamente
+        function checkConnection() {
+            if (navigator.onLine) {
+                document.getElementById('status').textContent = 'Conexión detectada. Recargando...';
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                document.getElementById('status').textContent = 'Sin conexión a internet';
+            }
+        }
+
+        // Verificar cada 3 segundos
+        setInterval(checkConnection, 3000);
+        checkConnection();
+
+        // Event listeners para cambios de conectividad
+        window.addEventListener('online', () => {
+            document.getElementById('status').textContent = '¡Conexión restaurada! Recargando...';
+            setTimeout(() => location.reload(), 1000);
+        });
+
+        window.addEventListener('offline', () => {
+            document.getElementById('status').textContent = 'Conexión perdida';
+        });
+    </script>
+</body>
+</html>
