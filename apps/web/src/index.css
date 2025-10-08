@@ -4,6 +4,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos custom comentados para debug.
-   Ver versiones anteriores si se requiere restaurar utilidades personalizadas.
-*/
+/* Custom Scrollbar - Oculto en fondos oscuros */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #CBD5E1;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #94A3B8;
+}
+
+/* Scrollbar para fondos oscuros (navy) */
+.bg-navy-900 *::-webkit-scrollbar-thumb,
+.bg-navy-800 *::-webkit-scrollbar-thumb {
+  background-color: #475569;
+}
+
+.bg-navy-900 *::-webkit-scrollbar-thumb:hover,
+.bg-navy-800 *::-webkit-scrollbar-thumb:hover {
+  background-color: #64748B;
+}

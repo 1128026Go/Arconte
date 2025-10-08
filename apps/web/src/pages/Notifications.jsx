@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
+import MainLayout from '../components/Layout/MainLayout';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 import { getAllNotifications, markAsRead, markAllAsRead } from "../lib/api";
+import { Bell, Check, CheckCheck, Clock, AlertCircle } from 'lucide-react';
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -47,95 +51,84 @@ export default function Notifications() {
   });
 
   return (
-    <div style={{ padding: "20px", maxWidth: "900px", margin: "0 auto" }}>
-      <div style={{ marginBottom: "30px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "700", marginBottom: "10px" }}>
-          Notificaciones
-        </h1>
-        <p style={{ color: "#6b7280" }}>
-          Mantente al día con las actualizaciones de tus casos
-        </p>
-      </div>
-
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "20px"
-      }}>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <FilterButton
-            active={filter === "all"}
-            onClick={() => setFilter("all")}
-          >
-            Todas
-          </FilterButton>
-          <FilterButton
-            active={filter === "unread"}
-            onClick={() => setFilter("unread")}
-          >
-            No leídas
-          </FilterButton>
-          <FilterButton
-            active={filter === "priority"}
-            onClick={() => setFilter("priority")}
-          >
-            Prioritarias
-          </FilterButton>
-        </div>
-
-        <button
-          onClick={handleMarkAllAsRead}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#3b82f6",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontSize: "14px"
-          }}
-        >
-          Marcar todas como leídas
-        </button>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "40px", color: "#6b7280" }}>
-          Cargando notificaciones...
-        </div>
-      ) : filtered.length === 0 ? (
-        <div style={{
-          textAlign: "center",
-          padding: "60px",
-          backgroundColor: "#f9fafb",
-          borderRadius: "8px"
-        }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>📭</div>
-          <div style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px" }}>
-            No hay notificaciones
+    <MainLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-navy-900">Notificaciones</h1>
+            <p className="text-slate-600 mt-1">
+              Mantente al día con las actualizaciones de tus casos
+            </p>
           </div>
-          <div style={{ color: "#6b7280" }}>
-            Aquí aparecerán las actualizaciones de tus casos
+          <Button
+            onClick={handleMarkAllAsRead}
+            className="bg-gold-500 hover:bg-gold-600 text-white"
+          >
+            <CheckCheck className="h-4 w-4 mr-2" />
+            Marcar todas como leídas
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <div className="flex gap-3">
+            <FilterButton
+              active={filter === "all"}
+              onClick={() => setFilter("all")}
+            >
+              Todas
+            </FilterButton>
+            <FilterButton
+              active={filter === "unread"}
+              onClick={() => setFilter("unread")}
+            >
+              No leídas
+            </FilterButton>
+            <FilterButton
+              active={filter === "priority"}
+              onClick={() => setFilter("priority")}
+            >
+              Prioritarias
+            </FilterButton>
           </div>
-        </div>
-      ) : (
-        <div style={{
-          backgroundColor: "white",
-          borderRadius: "8px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          overflow: "hidden"
-        }}>
-          {filtered.map(notif => (
-            <NotificationItem
-              key={notif.id}
-              notification={notif}
-              onMarkAsRead={handleMarkAsRead}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+        </Card>
+
+        {/* Notifications List */}
+        {loading ? (
+          <Card>
+            <div className="text-center py-12">
+              <div className="inline-block w-8 h-8 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-600">Cargando notificaciones...</p>
+            </div>
+          </Card>
+        ) : filtered.length === 0 ? (
+          <Card>
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-navy-100 mb-4">
+                <Bell className="h-8 w-8 text-navy-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-navy-900 mb-2">
+                No hay notificaciones
+              </h3>
+              <p className="text-slate-600">
+                Aquí aparecerán las actualizaciones de tus casos
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map(notif => (
+              <NotificationItem
+                key={notif.id}
+                notification={notif}
+                onMarkAsRead={handleMarkAsRead}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </MainLayout>
   );
 }
 
@@ -143,16 +136,11 @@ function FilterButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      style={{
-        padding: "8px 16px",
-        backgroundColor: active ? "#3b82f6" : "#f3f4f6",
-        color: active ? "white" : "#374151",
-        border: "none",
-        borderRadius: "6px",
-        cursor: "pointer",
-        fontSize: "14px",
-        fontWeight: "500"
-      }}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+        active
+          ? 'bg-navy-900 text-white'
+          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+      }`}
     >
       {children}
     </button>
@@ -160,10 +148,10 @@ function FilterButton({ active, onClick, children }) {
 }
 
 function NotificationItem({ notification, onMarkAsRead }) {
-  const getPriorityColor = (p) => {
-    if (p >= 8) return "#ef4444";
-    if (p >= 5) return "#f59e0b";
-    return "#3b82f6";
+  const getPriorityConfig = (p) => {
+    if (p >= 8) return { color: 'error', icon: AlertCircle, bg: 'bg-error-50', border: 'border-error-200' };
+    if (p >= 5) return { color: 'gold', icon: Clock, bg: 'bg-gold-50', border: 'border-gold-200' };
+    return { color: 'primary', icon: Bell, bg: 'bg-primary-50', border: 'border-primary-200' };
   };
 
   const formatDate = (timestamp) => {
@@ -176,62 +164,78 @@ function NotificationItem({ notification, onMarkAsRead }) {
     });
   };
 
+  const priority = getPriorityConfig(notification.priority);
+  const Icon = priority.icon;
+  const isUnread = !notification.read_at;
+
   return (
-    <div
-      onClick={() => !notification.read_at && onMarkAsRead(notification.id)}
-      style={{
-        padding: "20px",
-        borderBottom: "1px solid #e5e7eb",
-        backgroundColor: notification.read_at ? "white" : "#f0f9ff",
-        cursor: notification.read_at ? "default" : "pointer",
-        transition: "background-color 0.2s"
-      }}
+    <Card
+      className={`cursor-pointer transition-all hover:shadow-md ${
+        isUnread ? `${priority.bg} ${priority.border}` : 'border-slate-200'
+      }`}
+      onClick={() => isUnread && onMarkAsRead(notification.id)}
     >
-      <div style={{ display: "flex", gap: "16px" }}>
-        <div
-          style={{
-            width: "12px",
-            height: "12px",
-            borderRadius: "50%",
-            backgroundColor: getPriorityColor(notification.priority),
-            marginTop: "4px",
-            flexShrink: 0
-          }}
-        />
-        <div style={{ flex: 1 }}>
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: "8px"
-          }}>
-            <div style={{ fontSize: "16px", fontWeight: "600" }}>
+      <div className="flex gap-4">
+        {/* Icon */}
+        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+          priority.color === 'error' ? 'bg-error-100' :
+          priority.color === 'gold' ? 'bg-gold-100' : 'bg-primary-100'
+        }`}>
+          <Icon className={`h-5 w-5 ${
+            priority.color === 'error' ? 'text-error-600' :
+            priority.color === 'gold' ? 'text-gold-600' : 'text-primary-600'
+          }`} />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-2">
+            <h3 className={`font-semibold ${
+              isUnread ? 'text-navy-900' : 'text-slate-700'
+            }`}>
               {notification.title}
-            </div>
-            <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+            </h3>
+            <span className="text-xs text-slate-500 flex-shrink-0 ml-4">
               {formatDate(notification.created_at)}
-            </div>
+            </span>
           </div>
-          <div style={{ fontSize: "14px", color: "#4b5563", marginBottom: "8px" }}>
+
+          <p className="text-sm text-slate-600 mb-3">
             {notification.message}
-          </div>
-          <div style={{ display: "flex", gap: "12px", fontSize: "12px" }}>
-            <span style={{
-              padding: "2px 8px",
-              backgroundColor: "#f3f4f6",
-              borderRadius: "4px",
-              color: "#6b7280"
-            }}>
+          </p>
+
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              priority.color === 'error' ? 'bg-error-100 text-error-800' :
+              priority.color === 'gold' ? 'bg-gold-100 text-gold-800' :
+              'bg-primary-100 text-primary-800'
+            }`}>
               {notification.type}
             </span>
-            <span style={{ color: "#9ca3af" }}>
+
+            <span className="text-xs text-slate-500">
               Prioridad: {notification.priority}/10
             </span>
+
             {notification.read_at && (
-              <span style={{ color: "#10b981" }}>✓ Leída</span>
+              <span className="inline-flex items-center text-xs text-success-600">
+                <Check className="h-3 w-3 mr-1" />
+                Leída
+              </span>
             )}
           </div>
         </div>
+
+        {/* Unread indicator */}
+        {isUnread && (
+          <div className="flex-shrink-0">
+            <div className={`w-2 h-2 rounded-full ${
+              priority.color === 'error' ? 'bg-error-500' :
+              priority.color === 'gold' ? 'bg-gold-500' : 'bg-primary-500'
+            }`}></div>
+          </div>
+        )}
       </div>
-    </div>
+    </Card>
   );
 }

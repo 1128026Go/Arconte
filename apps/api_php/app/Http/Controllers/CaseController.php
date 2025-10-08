@@ -77,6 +77,10 @@ class CaseController extends Controller
             try {
                 $payload = $ingest->normalized($model->radicado);
 
+                if (empty($payload)) {
+                    throw new \Exception('No se encontró información del caso');
+                }
+
                 DB::transaction(function () use ($model, $payload) {
                     $model->parties()->delete();
                     foreach ((array) ($payload['parties'] ?? []) as $party) {
@@ -102,19 +106,39 @@ class CaseController extends Controller
                         );
                     }
 
-                    $model->estado_actual = data_get($payload, 'case.status', $model->estado_actual) ?? 'Activo';
-                    $model->tipo_proceso = data_get($payload, 'case.tipo_proceso', $model->tipo_proceso);
-                    $model->despacho = data_get($payload, 'case.despacho', data_get($payload, 'case.court', $model->despacho));
+                    $model->estado_actual = data_get($payload, 'case.status') ??
+                                           data_get($payload, 'estado_actual') ??
+                                           'Activo';
+                    $model->tipo_proceso = data_get($payload, 'case.tipo_proceso') ??
+                                          data_get($payload, 'tipo_proceso');
+                    $model->despacho = data_get($payload, 'case.despacho') ??
+                                      data_get($payload, 'case.court') ??
+                                      data_get($payload, 'despacho');
                     $model->last_checked_at = now();
                     $model->has_unread = true;
                     $model->estado_checked = true;
                     $model->save();
                 });
+
+                \Log::info('Case created successfully', ['radicado' => $model->radicado, 'payload_keys' => array_keys($payload)]);
             } catch (\Exception $e) {
-                // Si falla la búsqueda, marcar como no encontrado
-                $model->estado_actual = 'No encontrado';
+                \Log::error('Case creation failed', [
+                    'radicado' => $model->radicado,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+
+                // Si falla la búsqueda, marcar como error
+                $model->estado_actual = 'Error al buscar: ' . $e->getMessage();
                 $model->estado_checked = true;
                 $model->save();
+
+                // Retornar error al frontend
+                return response()->json([
+                    'error' => 'No se pudo obtener información del caso',
+                    'message' => $e->getMessage(),
+                    'case' => $model
+                ], 500);
             }
         }
 

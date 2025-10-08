@@ -65,8 +65,8 @@ export default function CasesPage() {
           <li key={c.id} style={{border:"1px solid #e5e7eb", borderRadius:10, padding:12}}>
             <div style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
               <div style={{fontWeight:600}}>
-                <a 
-                  href={`/cases/${c.id}`} 
+                <a
+                  href={`/cases/${c.id}`}
                   style={{textDecoration:"none", color:"#111"}}
                 >
                   {c.radicado}
@@ -87,6 +87,8 @@ export default function CasesPage() {
               <div style={{fontSize:12, color:"#555"}}>Última actualización: {fmtDate(c.updated_at)}</div>
             </div>
             <div style={{marginTop:4, fontSize:14}}>Estado: {c.status ?? "—"}</div>
+            {c.tipo_proceso && <div style={{marginTop:4, fontSize:14}}>Tipo de proceso: {c.tipo_proceso}</div>}
+            {c.despacho && <div style={{marginTop:4, fontSize:14}}>Ciudad/Despacho: {c.despacho}</div>}
 
             {c.parties?.length ? (
               <div style={{marginTop:8}}>
@@ -101,11 +103,19 @@ export default function CasesPage() {
 
             {c.acts?.length ? (
               <div style={{marginTop:8}}>
-                <div style={{fontSize:13, fontWeight:600}}>Actuaciones recientes</div>
-                <ul style={{margin:0, paddingLeft:18}}>
-                  {c.acts.slice(0,3).map((a,i)=>(
-                    <li key={i} style={{fontSize:13}}>{fmtDate(a.date)} — {a.title ?? "Actuación"}</li>
+                <div style={{fontSize:13, fontWeight:600}}>Anotaciones y Actuaciones ({c.acts.length})</div>
+                <ul style={{margin:0, paddingLeft:18, marginTop:4}}>
+                  {c.acts.slice(0,5).map((a,i)=>(
+                    <li key={i} style={{fontSize:13, marginTop:4}}>
+                      <strong>{fmtDate(a.date)}</strong> — {a.title ?? "Actuación"}
+                      {a.type && <span style={{marginLeft:6, fontSize:11, color:"#6b7280"}}>({a.type})</span>}
+                    </li>
                   ))}
+                  {c.acts.length > 5 && (
+                    <li style={{fontSize:12, color:"#6b7280", marginTop:4}}>
+                      + {c.acts.length - 5} actuaciones más
+                    </li>
+                  )}
                 </ul>
               </div>
             ) : null}

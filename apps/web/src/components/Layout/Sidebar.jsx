@@ -11,7 +11,10 @@ import {
   BarChart3,
   Scale,
   CheckCircle2,
-  LogOut
+  LogOut,
+  Bot,
+  ShoppingBag,
+  GraduationCap
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
@@ -21,12 +24,14 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Briefcase, label: 'Casos', path: '/cases' },
     { icon: FileText, label: 'Documentos', path: '/documents' },
+    { icon: Bot, label: 'IA Assistant', path: '/ai-assistant' },
+    { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
     { icon: CheckCircle2, label: 'Recordatorios', path: '/reminders' },
     { icon: Clock, label: 'Tiempo', path: '/time-tracking' },
     { icon: DollarSign, label: 'Facturación', path: '/billing' },
-    { icon: Bell, label: 'Notificaciones', path: '/notifications' },
     { icon: BookOpen, label: 'Jurisprudencia', path: '/jurisprudence' },
-    { icon: BarChart3, label: 'Analytics', path: '/analytics' }
+    { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+    { icon: GraduationCap, label: 'Tutorial', path: '/tutorial' }
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -50,7 +55,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           flex flex-col
         `}
       >
-        <div className="flex items-center justify-center h-16 px-6 border-b border-navy-800">
+        <div className="flex items-center h-16 px-6 border-b border-navy-800">
           <Scale className="w-8 h-8 text-gold-500 mr-3" />
           <div>
             <h1 className="text-xl font-bold text-white">

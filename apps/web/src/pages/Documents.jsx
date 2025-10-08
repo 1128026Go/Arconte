@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import MainLayout from '../components/Layout/MainLayout';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import {
   FileText,
-  FileImage,
   File,
   Upload,
   Download,
   Trash2,
   Share2,
   Search,
-  Filter,
-  X,
   Eye,
-  Clock
+  Clock,
+  Folder
 } from 'lucide-react';
 import { documents } from '../lib/api';
 
@@ -21,23 +23,16 @@ export default function Documents() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDoc, setSelectedDoc] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    type: '',
-    case_id: '',
-    date_from: '',
-    date_to: ''
-  });
+  const [selectedType, setSelectedType] = useState('all');
 
   useEffect(() => {
     loadDocuments();
-  }, [filters]);
+  }, []);
 
   const loadDocuments = async () => {
     try {
       setLoading(true);
-      const response = await documents.getAll(filters);
+      const response = await documents.getAll();
       setDocs(response.data || []);
     } catch (error) {
       console.error('Error loading documents:', error);
@@ -59,10 +54,8 @@ export default function Documents() {
       }
 
       await loadDocuments();
-      alert('Documentos subidos exitosamente');
     } catch (error) {
       console.error('Error uploading:', error);
-      alert('Error al subir documentos');
     } finally {
       setUploading(false);
     }
@@ -87,284 +80,263 @@ export default function Documents() {
       await loadDocuments();
     } catch (error) {
       console.error('Error deleting:', error);
-      alert('Error al eliminar documento');
     }
   };
 
-  const handleDownload = async (doc) => {
-    try {
-      const blob = await documents.download(doc.id);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.title;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading:', error);
-      alert('Error al descargar documento');
-    }
-  };
+  const filteredDocs = docs.filter(doc => {
+    const matchesSearch = doc.title?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = selectedType === 'all' || doc.type === selectedType;
+    return matchesSearch && matchesType;
+  });
 
-  const getFileIcon = (mime) => {
-    if (mime?.includes('pdf')) return <FileText className="w-5 h-5 text-red-500" />;
-    if (mime?.includes('image')) return <FileImage className="w-5 h-5 text-green-500" />;
-    return <File className="w-5 h-5 text-blue-500" />;
+  const stats = {
+    total: docs.length,
+    pdf: docs.filter(d => d.type === 'pdf').length,
+    image: docs.filter(d => d.type === 'image').length,
+    word: docs.filter(d => d.type === 'word').length
   };
-
-  const formatBytes = (bytes) => {
-    if (!bytes) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('es-CO');
-  };
-
-  const filteredDocs = docs.filter(doc =>
-    doc.title?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Documentos</h1>
-        <p className="text-gray-600 mt-1">Sube, organiza y comparte tus documentos</p>
-      </div>
-
-      {/* Upload Zone */}
-      <div
-        {...getRootProps()}
-        className={`
-          border-2 border-dashed rounded-lg p-8 mb-6 text-center cursor-pointer
-          transition-colors duration-200
-          ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
-          ${uploading ? 'opacity-50 cursor-not-allowed' : ''}
-        `}
-      >
-        <input {...getInputProps()} disabled={uploading} />
-        <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-        {uploading ? (
-          <p className="text-gray-600">Subiendo documentos...</p>
-        ) : isDragActive ? (
-          <p className="text-blue-600 font-medium">Suelta los archivos aquí...</p>
-        ) : (
-          <>
-            <p className="text-gray-700 font-medium mb-1">
-              Arrastra archivos aquí o haz clic para seleccionar
+    <MainLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-navy-900">Documentos</h1>
+            <p className="text-slate-600 mt-1">
+              Gestiona y organiza tus documentos legales
             </p>
-            <p className="text-sm text-gray-500">
-              PDF, Imágenes, Word, Excel (máx. 10MB por archivo)
-            </p>
-          </>
-        )}
-      </div>
-
-      {/* Search and Filters */}
-      <div className="flex gap-4 mb-6">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar documentos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          <Filter className="w-5 h-5" />
-          Filtros
-        </button>
-      </div>
-
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="bg-gray-50 p-4 rounded-lg mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo de archivo
-            </label>
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">Todos</option>
-              <option value="pdf">PDF</option>
-              <option value="image">Imagen</option>
-              <option value="document">Documento</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Desde
-            </label>
-            <input
-              type="date"
-              value={filters.date_from}
-              onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hasta
-            </label>
-            <input
-              type="date"
-              value={filters.date_to}
-              onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={() => setFilters({ type: '', case_id: '', date_from: '', date_to: '' })}
-              className="w-full px-4 py-2 text-gray-700 hover:text-gray-900"
-            >
-              Limpiar filtros
-            </button>
           </div>
         </div>
-      )}
 
-      {/* Documents Grid */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="text-gray-600 mt-2">Cargando documentos...</p>
-        </div>
-      ) : filteredDocs.length === 0 ? (
-        <div className="text-center py-12">
-          <File className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600">No hay documentos para mostrar</p>
-          <p className="text-sm text-gray-500 mt-1">
-            Sube tu primer documento arrastrándolo arriba
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDocs.map((doc) => (
-            <div
-              key={doc.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {getFileIcon(doc.mime)}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {doc.title}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {formatBytes(doc.size)}
-                    </p>
-                  </div>
-                </div>
+        {/* Upload Zone */}
+        <Card>
+          <div
+            {...getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              isDragActive
+                ? 'border-gold-500 bg-gold-50'
+                : 'border-slate-300 hover:border-gold-500 hover:bg-gold-50/50'
+            }`}
+          >
+            <input {...getInputProps()} />
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gold-100 flex items-center justify-center">
+                <Upload className="h-6 w-6 text-gold-600" />
               </div>
-
-              <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                <Clock className="w-4 h-4" />
-                {formatDate(doc.created_at)}
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSelectedDoc(doc)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
-                >
-                  <Eye className="w-4 h-4" />
-                  Ver
-                </button>
-                <button
-                  onClick={() => handleDownload(doc)}
-                  className="flex items-center justify-center gap-1 px-3 py-2 text-sm bg-green-50 text-green-700 rounded hover:bg-green-100"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(doc.id)}
-                  className="flex items-center justify-center gap-1 px-3 py-2 text-sm bg-red-50 text-red-700 rounded hover:bg-red-100"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Detail Modal */}
-      {selectedDoc && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-bold">{selectedDoc.title}</h2>
-              <button
-                onClick={() => setSelectedDoc(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-gray-500">Tipo</p>
-                  <p className="font-medium">{selectedDoc.mime}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Tamaño</p>
-                  <p className="font-medium">{formatBytes(selectedDoc.size)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Fecha de subida</p>
-                  <p className="font-medium">{formatDate(selectedDoc.created_at)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Caso asociado</p>
-                  <p className="font-medium">{selectedDoc.case_id || 'Ninguno'}</p>
-                </div>
-              </div>
-
-              {selectedDoc.ocr_text && (
-                <div className="mt-4">
-                  <h3 className="font-medium mb-2">Texto extraído (OCR)</h3>
-                  <div className="bg-gray-50 p-4 rounded text-sm max-h-60 overflow-y-auto">
-                    {selectedDoc.ocr_text}
-                  </div>
-                </div>
+              {uploading ? (
+                <p className="text-navy-700 font-medium">Subiendo archivos...</p>
+              ) : isDragActive ? (
+                <p className="text-gold-700 font-medium">Suelta los archivos aquí</p>
+              ) : (
+                <>
+                  <p className="text-navy-900 font-medium">
+                    Arrastra archivos aquí o haz click para seleccionar
+                  </p>
+                  <p className="text-slate-500 text-sm">
+                    PDF, Word, Excel, Imágenes (máx. 10MB)
+                  </p>
+                </>
               )}
             </div>
+          </div>
+        </Card>
 
-            <div className="p-4 border-t flex gap-2">
-              <button
-                onClick={() => handleDownload(selectedDoc)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                <Download className="w-4 h-4" />
-                Descargar
-              </button>
-              <button
-                onClick={() => setSelectedDoc(null)}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-              >
-                Cerrar
-              </button>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="border-navy-200">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-navy-100 p-2">
+                <Folder className="h-5 w-5 text-navy-700" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-600">Total</p>
+                <p className="text-2xl font-bold text-navy-900">{stats.total}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="border-error-200">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-error-100 p-2">
+                <FileText className="h-5 w-5 text-error-700" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-600">PDF</p>
+                <p className="text-2xl font-bold text-navy-900">{stats.pdf}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="border-primary-200">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary-100 p-2">
+                <FileText className="h-5 w-5 text-primary-700" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-600">Word</p>
+                <p className="text-2xl font-bold text-navy-900">{stats.word}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="border-success-200">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-success-100 p-2">
+                <File className="h-5 w-5 text-success-700" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-600">Imágenes</p>
+                <p className="text-2xl font-bold text-navy-900">{stats.image}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Search and Filters */}
+        <Card>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar documentos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex gap-2">
+              <TypeButton active={selectedType === 'all'} onClick={() => setSelectedType('all')}>
+                Todos
+              </TypeButton>
+              <TypeButton active={selectedType === 'pdf'} onClick={() => setSelectedType('pdf')}>
+                PDF
+              </TypeButton>
+              <TypeButton active={selectedType === 'word'} onClick={() => setSelectedType('word')}>
+                Word
+              </TypeButton>
+              <TypeButton active={selectedType === 'image'} onClick={() => setSelectedType('image')}>
+                Imágenes
+              </TypeButton>
             </div>
           </div>
+        </Card>
+
+        {/* Documents Grid */}
+        {loading ? (
+          <Card>
+            <div className="text-center py-12">
+              <div className="inline-block w-8 h-8 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-600">Cargando documentos...</p>
+            </div>
+          </Card>
+        ) : filteredDocs.length === 0 ? (
+          <Card>
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-navy-100 mb-4">
+                <FileText className="h-8 w-8 text-navy-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-navy-900 mb-2">
+                No hay documentos
+              </h3>
+              <p className="text-slate-600">
+                Sube tu primer documento para empezar
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredDocs.map(doc => (
+              <DocumentCard key={doc.id} doc={doc} onDelete={handleDelete} />
+            ))}
+          </div>
+        )}
+      </div>
+    </MainLayout>
+  );
+}
+
+function TypeButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+        active
+          ? 'bg-navy-900 text-white'
+          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function DocumentCard({ doc, onDelete }) {
+  const getIcon = (type) => {
+    switch (type) {
+      case 'pdf': return FileText;
+      case 'word': return FileText;
+      case 'image': return File;
+      default: return File;
+    }
+  };
+
+  const getIconColor = (type) => {
+    switch (type) {
+      case 'pdf': return 'text-error-600 bg-error-100';
+      case 'word': return 'text-primary-600 bg-primary-100';
+      case 'image': return 'text-success-600 bg-success-100';
+      default: return 'text-slate-600 bg-slate-100';
+    }
+  };
+
+  const Icon = getIcon(doc.type);
+  const formatDate = (date) => new Date(date).toLocaleDateString('es-CO');
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${getIconColor(doc.type)}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-navy-900 truncate">{doc.title}</h3>
+            <p className="text-sm text-slate-600">{formatSize(doc.size || 0)}</p>
+          </div>
         </div>
-      )}
-    </div>
+
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <Clock className="h-3 w-3" />
+          <span>{formatDate(doc.created_at)}</span>
+        </div>
+
+        <div className="flex items-center gap-2 pt-3 border-t border-slate-200">
+          <Button
+            variant="ghost"
+            className="flex-1 text-navy-700 hover:text-navy-900 hover:bg-navy-50"
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            Ver
+          </Button>
+          <Button
+            variant="ghost"
+            className="flex-1 text-primary-600 hover:text-primary-700 hover:bg-primary-50"
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Descargar
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => onDelete(doc.id)}
+            className="text-error-600 hover:text-error-700 hover:bg-error-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }

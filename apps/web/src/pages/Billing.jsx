@@ -74,10 +74,10 @@ export default function Billing() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Facturación</h1>
-            <p className="text-gray-600">Gestiona facturas y control financiero</p>
+            <h1 className="text-3xl font-bold text-navy-900">Facturación</h1>
+            <p className="text-slate-600 mt-1">Gestiona facturas y control financiero</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white">
             <Plus className="h-4 w-4" />
             Nueva Factura
           </Button>
@@ -85,50 +85,50 @@ export default function Billing() {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="border-navy-200">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-blue-100 p-2">
-                <FileText className="h-5 w-5 text-blue-600" />
+              <div className="rounded-lg bg-navy-100 p-2">
+                <FileText className="h-5 w-5 text-navy-700" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Facturas</p>
-                <p className="text-2xl font-bold">{statistics.total_invoices || 0}</p>
+                <p className="text-sm text-slate-600">Total Facturas</p>
+                <p className="text-2xl font-bold text-navy-900">{statistics.total_invoices || 0}</p>
               </div>
             </div>
           </Card>
 
-          <Card>
+          <Card className="border-gold-200">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-green-100 p-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
+              <div className="rounded-lg bg-gold-100 p-2">
+                <DollarSign className="h-5 w-5 text-gold-700" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Facturado</p>
-                <p className="text-2xl font-bold">{formatMoney(statistics.total_amount || 0)}</p>
+                <p className="text-sm text-slate-600">Total Facturado</p>
+                <p className="text-2xl font-bold text-navy-900">{formatMoney(statistics.total_amount || 0)}</p>
               </div>
             </div>
           </Card>
 
-          <Card>
+          <Card className="border-primary-200">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-yellow-100 p-2">
-                <Clock className="h-5 w-5 text-yellow-600" />
+              <div className="rounded-lg bg-primary-100 p-2">
+                <Clock className="h-5 w-5 text-primary-700" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Pendientes</p>
-                <p className="text-2xl font-bold">{statistics.pending_invoices || 0}</p>
+                <p className="text-sm text-slate-600">Pendientes</p>
+                <p className="text-2xl font-bold text-navy-900">{statistics.pending_invoices || 0}</p>
               </div>
             </div>
           </Card>
 
-          <Card>
+          <Card className="border-error-200">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-red-100 p-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
+              <div className="rounded-lg bg-error-100 p-2">
+                <AlertCircle className="h-5 w-5 text-error-700" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Vencidas</p>
-                <p className="text-2xl font-bold">{statistics.overdue_invoices || 0}</p>
+                <p className="text-sm text-slate-600">Vencidas</p>
+                <p className="text-2xl font-bold text-navy-900">{statistics.overdue_invoices || 0}</p>
               </div>
             </div>
           </Card>
@@ -173,15 +173,15 @@ export default function Billing() {
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-gray-600">
-                  <th className="py-3 font-medium">#</th>
-                  <th className="py-3 font-medium">Cliente</th>
-                  <th className="py-3 font-medium">Fecha Emisión</th>
-                  <th className="py-3 font-medium">Vencimiento</th>
-                  <th className="py-3 font-medium">Total</th>
-                  <th className="py-3 font-medium">Estado</th>
-                  <th className="py-3 font-medium text-right">Acciones</th>
+              <thead className="bg-navy-50">
+                <tr className="border-b border-navy-200 text-left">
+                  <th className="py-3 px-4 font-semibold text-navy-700">#</th>
+                  <th className="py-3 px-4 font-semibold text-navy-700">Cliente</th>
+                  <th className="py-3 px-4 font-semibold text-navy-700">Fecha Emisión</th>
+                  <th className="py-3 px-4 font-semibold text-navy-700">Vencimiento</th>
+                  <th className="py-3 px-4 font-semibold text-navy-700">Total</th>
+                  <th className="py-3 px-4 font-semibold text-navy-700">Estado</th>
+                  <th className="py-3 px-4 font-semibold text-navy-700 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -196,20 +196,20 @@ export default function Billing() {
                   </tr>
                 ) : filteredInvoices.length === 0 ? (
                   <tr>
-                    <td className="py-8 text-center text-gray-500" colSpan={7}>
+                    <td className="py-8 text-center text-slate-500" colSpan={7}>
                       No se encontraron facturas
                     </td>
                   </tr>
                 ) : (
                   filteredInvoices.map(invoice => (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
-                      <td className="py-3">
-                        <span className="font-medium">{invoice.invoice_number || `#${invoice.id}`}</span>
+                    <tr key={invoice.id} className="hover:bg-navy-50/50 transition-colors">
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-navy-900">{invoice.invoice_number || `#${invoice.id}`}</span>
                       </td>
-                      <td className="py-3">{invoice.client_name || 'Cliente no especificado'}</td>
-                      <td className="py-3">{formatDate(invoice.created_at)}</td>
-                      <td className="py-3">{formatDate(invoice.due_date)}</td>
-                      <td className="py-3 font-medium">{formatMoney(invoice.total_amount || 0)}</td>
+                      <td className="py-3 px-4 text-navy-700">{invoice.client_name || 'Cliente no especificado'}</td>
+                      <td className="py-3 px-4 text-navy-700">{formatDate(invoice.created_at)}</td>
+                      <td className="py-3 px-4 text-navy-700">{formatDate(invoice.due_date)}</td>
+                      <td className="py-3 px-4 font-semibold text-navy-900">{formatMoney(invoice.total_amount || 0)}</td>
                       <td className="py-3">
                         <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusBadge(invoice.status)}`}>
                           {getStatusLabel(invoice.status)}
