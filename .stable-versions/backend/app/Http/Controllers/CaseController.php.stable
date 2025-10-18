@@ -1,0 +1,256 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Resources\CaseResource;
+use App\Models\CaseAct;
+use App\Models\CaseModel;
+use App\Models\CaseParty;
+use App\Services\IngestClient;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+
+class CaseController extends Controller
+{
+    public function index(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        return Cache::remember("cases.user.{$userId}", 300, function () use ($userId) {
+            $cases = CaseModel::where('user_id', $userId)
+                ->with(['parties', 'acts' => function($query) {
+                    $query->orderByDesc('fecha')->limit(5);
+                }])
+                ->orderByDesc('updated_at')
+                ->get();
+
+            return $cases->map(function($case) {
+                return [
+                    'id' => $case->id,
+                    'radicado' => $case->radicado,
+                    'estado_actual' => $case->estado_actual,
+                    'tipo_proceso' => $case->tipo_proceso,
+                    'despacho' => $case->despacho,
+                    'last_checked_at' => $case->last_checked_at,
+                    'last_seen_at' => $case->last_seen_at,
+                    'has_unread' => $case->has_unread,
+                    'estado_checked' => $case->estado_checked,
+                    'updated_at' => $case->updated_at,
+                    // Campos clave de Rama Judicial
+                    'fecha_radicacion' => optional($case->fecha_radicacion)->toDateString(),
+                    'fecha_ultima_actuacion' => optional($case->fecha_ultima_actuacion)->toDateString(),
+                    'ponente' => $case->ponente,
+                    'clase_proceso' => $case->clase_proceso,
+                    'subclase_proceso' => $case->subclase_proceso,
+                    'ubicacion_expediente' => $case->ubicacion_expediente,
+                    'recurso' => $case->recurso,
+                    'parties' => $case->parties->map(fn($p) => [
+                        'id' => $p->id,
+                        'role' => $p->rol,
+                        'name' => $p->nombre,
+                        'documento' => $p->documento,
+                    ]),
+                    'acts' => $case->acts->map(fn($a) => [
+                        'id' => $a->id,
+                        'date' => optional($a->fecha)->toDateString(),
+                        'type' => $a->tipo,
+                        'title' => $a->descripcion,
+                        'is_auto' => $a->clasificacion !== null,
+                        'auto_type' => $a->clasificacion,
+                        'confidence' => $a->confianza_clasificacion,
+                        'notificado' => $a->notificado,
+                        'fecha_final' => optional($a->fecha_final)->toDateString(),
+                    ]),
+                ];
+            });
+        });
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'radicado' => [
+                'required',
+                'string',
+                'regex:/^\d{23}$/', // 23 dígitos exactos
+                'unique:case_models,radicado,NULL,id,user_id,' . $request->user()->id
+            ],
+        ], [
+            'radicado.required' => 'El número de radicado es requerido',
+            'radicado.regex' => 'El radicado debe tener exactamente 23 dígitos',
+            'radicado.unique' => 'Este radicado ya existe en tu lista de casos',
+        ]);
+
+        // Verificar límites del plan del usuario
+        $subscription = $request->user()->activeSubscription();
+        $plan = $subscription?->plan ?? \App\Models\Plan::where('name', 'free')->first();
+
+        if (!$plan) {
+            return response()->json([
+                'error' => 'plan_not_found',
+                'message' => 'No se pudo determinar tu plan actual. Por favor contacta soporte.'
+            ], 500);
+        }
+
+        // Verificar si el plan tiene límite de casos (0 = ilimitado)
+        if ($plan->max_cases > 0) {
+            $casesCount = $request->user()->cases()->count();
+
+            if ($casesCount >= $plan->max_cases) {
+                return response()->json([
+                    'error' => 'limit_reached',
+                    'message' => "Has alcanzado el límite de {$plan->max_cases} casos de tu plan {$plan->display_name}",
+                    'plan_name' => $plan->display_name,
+                    'current_cases' => $casesCount,
+                    'max_cases' => $plan->max_cases,
+                    'upgrade_url' => '/subscriptions/plans'
+                ], 403);
+            }
+        }
+
+        $model = CaseModel::firstOrCreate(
+            [
+                'user_id' => $request->user()->id,
+                'radicado' => $data['radicado'],
+            ],
+            [
+                'estado_actual' => 'Buscando información...',
+                'estado_checked' => false,
+                'has_unread' => false,
+            ]
+        );
+
+        // Si es un caso nuevo o no ha sido verificado, despachar Job en background
+        if ($model->wasRecentlyCreated || !$model->estado_checked) {
+            \Log::info('Dispatching FetchCaseData job for radicado: ' . $model->radicado, [
+                'case_id' => $model->id,
+                'user_id' => $request->user()->id
+            ]);
+
+            // Despachar Job asíncrono para obtener datos (pasando ID)
+            \App\Jobs\FetchCaseData::dispatch($model->id);
+        }
+
+        Cache::forget("cases.user.{$request->user()->id}");
+
+        return response()->json([
+            'id' => $model->id,
+            'radicado' => $model->radicado,
+            'estado_actual' => $model->estado_actual,
+            'estado_checked' => $model->estado_checked,
+            'has_unread' => $model->has_unread,
+            'message' => $model->wasRecentlyCreated
+                ? 'Caso agregado. Obteniendo información en segundo plano...'
+                : 'Caso ya existe',
+        ], 201);
+    }
+
+    public function show(Request $request, int $id)
+    {
+        $userId = $request->user()->id;
+
+        $model = Cache::remember("case.detail.{$id}", 180, function () use ($userId, $id) {
+            return CaseModel::where('user_id', $userId)
+                ->with(['parties', 'acts.documents'])
+                ->findOrFail($id);
+        });
+
+        return new CaseResource($model);
+    }
+
+    public function refresh(Request $request, int $id, IngestClient $ingest, \App\Services\CaseUpdateService $updateService): JsonResponse
+    {
+        $model = CaseModel::where('user_id', $request->user()->id)->findOrFail($id);
+
+        try {
+            $payload = $ingest->normalized($model->radicado);
+
+            // Usar servicio consolidado para actualizar el caso
+            $model = $updateService->updateFromPayload($model, $payload);
+
+            // Marcar como con novedades para que el usuario las vea
+            $model->has_unread = true;
+            $model->save();
+
+            return $this->show($request, $model->id);
+
+        } catch (\RuntimeException $e) {
+            \Log::error('case_refresh_failed', [
+                'case_id' => $id,
+                'radicado' => $model->radicado,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'refresh_failed',
+                'message' => $e->getMessage()
+            ], 502);
+        }
+    }
+
+    public function markRead(Request $request, int $id): array
+    {
+        $model = CaseModel::where('user_id', $request->user()->id)->findOrFail($id);
+        $model->has_unread = false;
+        $model->estado_checked = true;
+        $model->last_seen_at = now();
+        $model->save();
+
+        Cache::forget("case.detail.{$id}");
+        Cache::forget("cases.user.{$request->user()->id}");
+
+        return [
+            'ok' => true,
+            'last_seen_at' => optional($model->last_seen_at)->toISOString(),
+            'estado_checked' => $model->estado_checked,
+        ];
+    }
+
+    public function unreadCount(Request $request): array
+    {
+        $userId = $request->user()->id;
+
+        $count = Cache::remember("cases.unread.{$userId}", 60, function () use ($userId) {
+            return CaseModel::where('user_id', $userId)
+                ->where(function ($query) {
+                    $query->where('has_unread', true)
+                        ->orWhere('estado_checked', false);
+                })
+                ->count();
+        });
+
+        return ['count' => $count];
+    }
+
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        $model = CaseModel::where('user_id', $request->user()->id)->findOrFail($id);
+
+        // Eliminar en cascada: parties y acts se eliminan automáticamente por la FK constraint
+        $model->delete();
+
+        // Limpiar caché
+        Cache::forget("case.detail.{$id}");
+        Cache::forget("cases.user.{$request->user()->id}");
+        Cache::forget("cases.unread.{$request->user()->id}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Caso eliminado correctamente'
+        ]);
+    }
+
+    public function markViewed(Request $request, int $id)
+    {
+        $case = CaseModel::where('user_id', $request->user()->id)->findOrFail($id);
+
+        $case->update(['last_viewed_at' => now()]);
+
+        Cache::forget("case.detail.{$id}");
+        Cache::forget("cases.user.{$request->user()->id}");
+
+        return response()->noContent();
+    }
+}

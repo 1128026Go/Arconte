@@ -1,0 +1,73 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Pre-push Hook - Smoke test de autenticación + E2E rápidos
+
+echo "🔐 Ejecutando tests de autenticación..."
+
+# Verificar servicios
+if ! curl -s http://localhost:8000/api/health/external > /dev/null 2>&1; then
+  echo "❌ Laravel API no está corriendo en puerto 8000"
+  echo "   Inicia con: php artisan serve"
+  exit 1
+fi
+
+if ! curl -s http://localhost:3000/ > /dev/null 2>&1; then
+  echo "❌ Frontend (Vite) no está corriendo en puerto 3000"
+  echo "   Inicia con: npm run dev"
+  exit 1
+fi
+
+# Smoke test rápido (Sanctum): csrf → login → me → logout → me(401)
+echo "- Ejecutando smoke test de auth Sanctum..."
+
+JAR_FILE="$(mktemp 2>/dev/null || echo .cookies_auth)"
+API="http://localhost:8000"
+EMAIL="admin@juridica.test"
+PASS="admin123"
+
+# CSRF
+CSRF_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -c "$JAR_FILE" -b "$JAR_FILE" -H "Origin: http://localhost:3000" -H "Accept: application/json" -H "X-Requested-With: XMLHttpRequest" "$API/sanctum/csrf-cookie")
+if [ "$CSRF_CODE" != "204" ] && [ "$CSRF_CODE" != "200" ]; then
+  echo "❌ CSRF cookie FALLÓ ($CSRF_CODE)"; rm -f "$JAR_FILE"; exit 1;
+fi
+
+XSRF=$(awk -F"\t" '/XSRF-TOKEN/ {v=$7} END{print v}' "$JAR_FILE")
+if [ -z "$XSRF" ]; then echo "❌ No se extrajo XSRF-TOKEN"; rm -f "$JAR_FILE"; exit 1; fi
+
+# LOGIN
+LOGIN_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -c "$JAR_FILE" -b "$JAR_FILE" -H "Origin: http://localhost:3000" -H "Accept: application/json" -H "Content-Type: application/json" -H "X-Requested-With: XMLHttpRequest" -H "X-XSRF-TOKEN: $XSRF" -X POST -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" "$API/api/auth/login")
+if [ "$LOGIN_CODE" != "200" ]; then echo "❌ Login FALLÓ ($LOGIN_CODE)"; rm -f "$JAR_FILE"; exit 1; fi
+
+# ME (200)
+ME1_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -c "$JAR_FILE" -b "$JAR_FILE" -H "Origin: http://localhost:3000" -H "Accept: application/json" -H "X-Requested-With: XMLHttpRequest" "$API/api/auth/me")
+if [ "$ME1_CODE" != "200" ]; then echo "❌ /auth/me FALLÓ ($ME1_CODE)"; rm -f "$JAR_FILE"; exit 1; fi
+
+# LOGOUT
+LOGOUT_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -c "$JAR_FILE" -b "$JAR_FILE" -H "Origin: http://localhost:3000" -H "Accept: application/json" -H "Content-Type: application/json" -H "X-Requested-With: XMLHttpRequest" -H "X-XSRF-TOKEN: $XSRF" -X POST "$API/api/auth/logout")
+if [ "$LOGOUT_CODE" != "200" ]; then echo "❌ Logout FALLÓ ($LOGOUT_CODE)"; rm -f "$JAR_FILE"; exit 1; fi
+
+# ME (401)
+ME2_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -c "$JAR_FILE" -b "$JAR_FILE" -H "Origin: http://localhost:3000" -H "Accept: application/json" -H "X-Requested-With: XMLHttpRequest" "$API/api/auth/me")
+rm -f "$JAR_FILE"
+if [ "$ME2_CODE" != "401" ]; then echo "❌ /auth/me debería ser 401 tras logout (fue $ME2_CODE)"; exit 1; fi
+
+echo "✅ Smoke test de auth Sanctum OK"
+
+# E2E Playwright (solo auth)
+cd apps/web || exit 1
+if ! npx playwright --version > /dev/null 2>&1; then
+  echo "ℹ️  Instalando Playwright..."
+  npm install -D @playwright/test >/dev/null 2>&1
+  npx playwright install >/dev/null 2>&1
+fi
+
+if npx playwright test auth.spec.ts --reporter=line; then
+  echo "✅ Tests E2E de autenticación OK"
+  exit 0
+else
+  echo "❌ Tests E2E de autenticación FALLARON"
+  echo "  Detalles: cd apps/web && npm run test:e2e:auth"
+  exit 1
+fi
+

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { api } from '../../lib/apiSecure';
 
 const FloatingAI = () => {
+  const { isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -50,7 +53,6 @@ const FloatingAI = () => {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
       const currentPath = location.pathname;
 
       // Crear contexto mejorado basado en la ubicación
@@ -66,27 +68,21 @@ const FloatingAI = () => {
         contextPrompt = `[CONTEXTO: Usuario en sección de Facturación] ${inputMessage}`;
       }
 
-      const response = await fetch('http://localhost:8000/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          message: contextPrompt,
-          conversation_id: conversationId
-        })
+      const response = await api.post('/ai/chat', {
+        message: contextPrompt,
+        conversation_id: conversationId
       });
 
-      const data = await response.json();
+      // La respuesta ya es la data directamente (axios interceptor retorna response.data)
+      const data = response.data || response;
 
-      if (data.conversation_id) {
+      if (data?.conversation_id) {
         setConversationId(data.conversation_id);
       }
 
       const assistantMessage = {
         role: 'assistant',
-        content: data.message || 'Lo siento, hubo un error al procesar tu mensaje.',
+        content: data?.message || data?.response || 'Lo siento, hubo un error al procesar tu mensaje.',
         timestamp: new Date().toISOString()
       };
 

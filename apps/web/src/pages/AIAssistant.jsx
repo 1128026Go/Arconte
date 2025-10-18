@@ -1,10 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { api } from '../lib/apiSecure';
 import MainLayout from '../components/Layout/MainLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Bot, Send, User, Loader2, Sparkles } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 export default function AIAssistant() {
+  const { isAuthenticated } = useAuth();
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -23,44 +26,31 @@ export default function AIAssistant() {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!input.trim()) return;
 
-    const userMessage = { role: 'user', content: input };
-    const userInput = input;
-    setMessages(prev => [...prev, userMessage]);
+    const userMessage = input;
     setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-
-      // Crear un AbortController para timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos timeout
-
-      const response = await fetch('http://localhost:8000/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ message: userInput }),
-        signal: controller.signal
+      // Usar apiSecure en lugar de fetch directo para mantener seguridad
+      const response = await api.post('/ai/chat', {
+        message: userMessage
       });
 
-      clearTimeout(timeoutId);
+      console.log('AI Response:', response);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Error al conectar con la IA');
-      }
-
-      const data = await response.json();
+      // La respuesta ya es la data directamente (axios interceptor retorna response.data)
+      const data = response.data || response;
+      const assistantContent = data.message || data.response || 'Lo siento, no pude procesar tu solicitud.';
+      console.log('Assistant Content:', assistantContent);
 
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: data.message || data.response || 'Lo siento, no pude procesar tu solicitud.'
+        content: assistantContent
       }]);
     } catch (error) {
       console.error('Error:', error);
@@ -87,7 +77,7 @@ export default function AIAssistant() {
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSubmit(e);
     }
   };
 
@@ -198,7 +188,7 @@ export default function AIAssistant() {
             />
           </div>
           <Button
-            onClick={sendMessage}
+            onClick={handleSubmit}
             disabled={!input.trim() || loading}
             className="h-full bg-gold-500 hover:bg-gold-600 text-white px-6 disabled:opacity-50"
           >

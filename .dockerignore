@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+.github
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Development
+.env
+.env.local
+.env.development
+*.log
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.nyc_output
+*.test.js
+*.spec.js
+**/__tests__
+**/__mocks__
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Laravel specific (for api_php)
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
+bootstrap/cache/*
+vendor/
+.phpunit.result.cache
+
+# Scripts
+scripts/
+tests/

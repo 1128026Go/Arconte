@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 from typing import Any, Dict
 
 import httpx
@@ -26,7 +27,7 @@ BASE_URL = (
 
 ACTUACIONES_URL = (
     "https://consultaprocesos.ramajudicial.gov.co:448/api/v2/"
-    "Procesos/Actuaciones/{id_proceso}"
+    "Proceso/Actuaciones/{id_proceso}"
 )
 
 
@@ -52,22 +53,34 @@ async def fetch_by_radicado(
         "SoloActivos": str(solo_activos).lower(),
         "pagina": page,
     }
+
+    # Timeout de 5s por intento para fallback rápido
+    timeout = 5.0
+
+    # Backoff exponencial con jitter: 0.5s, 1.5s, 3s (±20%)
+    base_delays = [0.5, 1.5, 3.0]
+
     attempt = 0
     last_exc: Exception | None = None
     while attempt < max_retries:
         try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.get(BASE_URL, params=params)
                 response.raise_for_status()
                 return response.json()
         except Exception as exc:  # pylint: disable=broad-except
             last_exc = exc
             attempt += 1
-            wait = 2**attempt
             logger.warning(
                 "Error consultando radicado %s (intento %s/%s): %s", radicado, attempt, max_retries, exc
             )
-            await asyncio.sleep(wait)
+            if attempt < max_retries:
+                # Calcular backoff con jitter
+                base_delay = base_delays[min(attempt - 1, len(base_delays) - 1)]
+                jitter = random.uniform(-0.2, 0.2) * base_delay
+                wait = base_delay + jitter
+                logger.info(f"Esperando {wait:.2f}s antes del siguiente intento")
+                await asyncio.sleep(wait)
     assert last_exc is not None  # para mypy
     raise last_exc
 
@@ -88,22 +101,34 @@ async def fetch_actuaciones(
         httpx.HTTPError: si la solicitud falla después de los reintentos.
     """
     url = ACTUACIONES_URL.format(id_proceso=id_proceso)
+
+    # Timeout de 5s por intento para fallback rápido
+    timeout = 5.0
+
+    # Backoff exponencial con jitter: 0.5s, 1.5s, 3s (±20%)
+    base_delays = [0.5, 1.5, 3.0]
+
     attempt = 0
     last_exc: Exception | None = None
     while attempt < max_retries:
         try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.get(url)
                 response.raise_for_status()
                 return response.json()
         except Exception as exc:  # pylint: disable=broad-except
             last_exc = exc
             attempt += 1
-            wait = 2**attempt
             logger.warning(
                 "Error consultando actuaciones del proceso %s (intento %s/%s): %s",
                 id_proceso, attempt, max_retries, exc
             )
-            await asyncio.sleep(wait)
+            if attempt < max_retries:
+                # Calcular backoff con jitter
+                base_delay = base_delays[min(attempt - 1, len(base_delays) - 1)]
+                jitter = random.uniform(-0.2, 0.2) * base_delay
+                wait = base_delay + jitter
+                logger.info(f"Esperando {wait:.2f}s antes del siguiente intento")
+                await asyncio.sleep(wait)
     assert last_exc is not None  # para mypy
     raise last_exc

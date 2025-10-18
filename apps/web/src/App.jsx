@@ -2,12 +2,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { useAuthCheck } from "./hooks/useAuth.js";
 
 // Eager load critical pages
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 
 // Lazy load other pages for better performance
+const Register = lazy(() => import("./pages/Register.jsx"));
+const Subscription = lazy(() => import("./pages/Subscription.jsx"));
 const Cases = lazy(() => import("./pages/Cases.jsx"));
 const CaseDetail = lazy(() => import("./pages/CaseDetail.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
@@ -20,7 +23,11 @@ const Analytics = lazy(() => import("./pages/Analytics.jsx"));
 const AIAssistant = lazy(() => import("./pages/AIAssistant.jsx"));
 const Marketplace = lazy(() => import("./pages/Marketplace.jsx"));
 const Tutorial = lazy(() => import("./pages/Tutorial.jsx"));
+const Settings = lazy(() => import("./pages/Settings.jsx"));
 const Logout = lazy(() => import("./pages/Logout.jsx"));
+const Pricing = lazy(() => import("./pages/Pricing.jsx"));
+const CheckoutResponse = lazy(() => import("./pages/CheckoutResponse.jsx"));
+const CheckoutSimulation = lazy(() => import("./pages/CheckoutSimulation.jsx"));
 const FloatingAI = lazy(() => import("./components/AIAssistant/FloatingAI.jsx"));
 
 // Loading component
@@ -34,17 +41,23 @@ const PageLoader = () => (
 );
 
 function PublicRoute({ children }) {
-  const token = localStorage.getItem("token");
-  return token ? <Navigate to="/dashboard" replace /> : children;
+  const { isAuthenticated, isLoading } = useAuthCheck();
+  
+  if (isLoading) {
+    return <PageLoader />;
+  }
+  
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
 }
 
 export default function App() {
-  const token = localStorage.getItem("token");
+  const { isAuthenticated, isLoading } = useAuthCheck();
 
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        {token && (
+        {/* Solo mostrar FloatingAI si está autenticado */}
+        {isAuthenticated && !isLoading && (
           <Suspense fallback={null}>
             <FloatingAI />
           </Suspense>
@@ -56,6 +69,15 @@ export default function App() {
             element={
               <PublicRoute>
                 <Login />
+              </PublicRoute>
+            }
+          />
+
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <Register />
               </PublicRoute>
             }
           />
@@ -173,6 +195,51 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Tutorial />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/subscription"
+            element={
+              <ProtectedRoute>
+                <Subscription />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/pricing"
+            element={
+              <ProtectedRoute>
+                <Pricing />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/checkout/response"
+            element={
+              <ProtectedRoute>
+                <CheckoutResponse />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/checkout/simulation"
+            element={
+              <ProtectedRoute>
+                <CheckoutSimulation />
               </ProtectedRoute>
             }
           />

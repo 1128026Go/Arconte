@@ -23,6 +23,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'avatar',
+        'preferences',
+        'notification_settings',
     ];
 
     /**
@@ -45,11 +48,52 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'preferences' => 'array',
+            'notification_settings' => 'array',
         ];
     }
 
     public function cases()
     {
         return $this->hasMany(CaseModel::class, 'user_id');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class, 'user_id');
+    }
+
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function activeSubscription()
+    {
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('ends_at')
+                    ->orWhere('ends_at', '>', now());
+            })
+            ->first();
+    }
+
+    public function usageTracking()
+    {
+        return $this->hasMany(UsageTracking::class);
+    }
+
+    public function todayUsage()
+    {
+        return $this->usageTracking()
+            ->where('date', now()->toDateString())
+            ->first();
+    }
+
+    public function hasPremium(): bool
+    {
+        $subscription = $this->activeSubscription();
+        return $subscription && $subscription->plan->isPremium();
     }
 }

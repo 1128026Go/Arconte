@@ -1,0 +1,898 @@
+// ✅ API Client mejorado con autenticación por cookies (más seguro)
+const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
+const BASE_URL = BASE.replace('/api', '');
+
+// Configuración de cookies seguras
+const fetchConfig = {
+  credentials: 'include', // Incluir cookies en todas las peticiones
+  headers: {
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest', // Para identificar peticiones AJAX
+  }
+};
+
+// Helper para obtener CSRF token de la cookie
+const getCsrfToken = () => {
+  const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+const jsonHeaders = () => {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...fetchConfig.headers,
+  };
+
+  // Agregar CSRF token si existe
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    headers['X-XSRF-TOKEN'] = csrfToken;
+  }
+
+  return headers;
+};
+
+const parseJson = async (response, errorCode) => {
+  if (!response.ok) {
+    // Si es 401, significa que no está autenticado
+    if (response.status === 401) {
+      // Disparar evento de logout automático
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      throw new Error('unauthorized');
+    }
+
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || errorCode);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
+};
+
+const buildQuery = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.append(key, value);
+    }
+  });
+  const queryString = query.toString();
+  return queryString ? `?${queryString}` : '';
+};
+
+// ===========================================
+// Authentication (cookie-based)
+// ===========================================
+export const auth = {
+  // Obtener CSRF token antes de login
+  csrf: async () => {
+    await fetch(`${BASE_URL}/sanctum/csrf-cookie`, {
+      ...fetchConfig,
+      method: 'GET',
+    });
+  },
+
+  login: async (email, password) => {
+    // Primero obtener CSRF token
+    await auth.csrf();
+
+    const response = await fetch(`${BASE}/auth/login`, {
+      ...fetchConfig,
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await parseJson(response, 'login_failed');
+
+    // Con cookies no necesitamos guardar token manualmente
+    // Sanctum lo maneja automáticamente
+
+    // Disparar evento de login exitoso
+    window.dispatchEvent(new CustomEvent('auth:login', { detail: data }));
+
+    return data;
+  },
+
+  register: async (name, email, password, password_confirmation) => {
+    await auth.csrf();
+
+    const response = await fetch(`${BASE}/auth/register`, {
+      ...fetchConfig,
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ name, email, password, password_confirmation }),
+    });
+
+    const data = await parseJson(response, 'register_failed');
+
+    window.dispatchEvent(new CustomEvent('auth:login', { detail: data }));
+
+    return data;
+  },
+
+  logout: async () => {
+    try {
+      // Asegurar cookie CSRF antes de enviar el logout (Sanctum requiere header X-XSRF-TOKEN)
+      await auth.csrf();
+
+      await fetch(`${BASE}/auth/logout`, {
+        ...fetchConfig,
+        method: 'POST',
+        headers: jsonHeaders(),
+      });
+    } finally {
+      // Disparar evento de logout
+      window.dispatchEvent(new CustomEvent('auth:logout'));
+    }
+  },
+
+  me: async () => {
+    const response = await fetch(`${BASE}/auth/me`, {
+      ...fetchConfig,
+      cache: 'no-store',
+      headers: {
+        ...fetchConfig.headers,
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    });
+
+    return parseJson(response, 'me_failed');
+  },
+
+  // Verificar si hay sesión activa
+  check: async () => {
+    try {
+      await auth.me();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+};
+
+// ===========================================
+// Helper para todas las demás peticiones
+// ===========================================
+const apiRequest = async (endpoint, options = {}) => {
+  const headers = {
+    ...fetchConfig.headers,
+    ...options.headers,
+  };
+
+  // Agregar CSRF token si existe
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    headers['X-XSRF-TOKEN'] = csrfToken;
+  }
+
+  const config = {
+    ...fetchConfig,
+    ...options,
+    headers,
+  };
+
+  const response = await fetch(`${BASE}${endpoint}`, config);
+  return parseJson(response, options.errorCode || 'request_failed');
+};
+
+const apiRequestBlob = async (endpoint, options = {}) => {
+  const headers = {
+    ...fetchConfig.headers,
+    ...options.headers,
+  };
+
+  // Agregar CSRF token si existe
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    headers['X-XSRF-TOKEN'] = csrfToken;
+  }
+
+  const config = {
+    ...fetchConfig,
+    ...options,
+    headers,
+  };
+
+  const response = await fetch(`${BASE}${endpoint}`, config);
+
+  if (!response.ok) {
+    throw new Error(options.errorCode || 'request_failed');
+  }
+
+  return response.blob();
+};
+
+// ===========================================
+// Cases
+// ===========================================
+export const cases = {
+  getAll: async (params = {}) => {
+    return apiRequest(`/cases${buildQuery(params)}`, {
+      errorCode: 'cases_list_failed'
+    });
+  },
+
+  getById: async (id) => {
+    return apiRequest(`/cases/${id}`, {
+      errorCode: 'case_get_failed'
+    });
+  },
+
+  create: async (radicado) => {
+    return apiRequest('/cases', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ radicado }),
+      errorCode: 'case_create_failed'
+    });
+  },
+
+  markRead: async (id) => {
+    return apiRequest(`/cases/${id}/read`, {
+      method: 'POST',
+      errorCode: 'case_mark_read_failed'
+    });
+  },
+
+  markViewed: async (id) => {
+    return apiRequest(`/cases/${id}/mark-viewed`, {
+      method: 'POST',
+      errorCode: 'case_mark_viewed_failed'
+    });
+  },
+
+  refresh: async (id) => {
+    return apiRequest(`/cases/${id}/refresh`, {
+      method: 'POST',
+      errorCode: 'case_refresh_failed'
+    });
+  },
+
+  delete: async (id) => {
+    return apiRequest(`/cases/${id}`, {
+      method: 'DELETE',
+      errorCode: 'case_delete_failed'
+    });
+  }
+};
+
+// ===========================================
+// Documents
+// ===========================================
+export const documents = {
+  getAll: async (params = {}) => {
+    return apiRequest(`/documents${buildQuery(params)}`, {
+      errorCode: 'documents_list_failed'
+    });
+  },
+
+  getById: async (id) => {
+    return apiRequest(`/documents/${id}`, {
+      errorCode: 'document_get_failed'
+    });
+  },
+
+  upload: async (formData) => {
+    return apiRequest('/documents', {
+      method: 'POST',
+      // No agregar Content-Type para FormData
+      headers: fetchConfig.headers,
+      body: formData,
+      errorCode: 'documents_upload_failed'
+    });
+  },
+
+  update: async (id, data) => {
+    return apiRequest(`/documents/${id}`, {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'document_update_failed'
+    });
+  },
+
+  delete: async (id) => {
+    return apiRequest(`/documents/${id}`, {
+      method: 'DELETE',
+      errorCode: 'documents_delete_failed'
+    });
+  },
+
+  download: async (id) => {
+    return apiRequestBlob(`/documents/${id}/download`, {
+      errorCode: 'document_download_failed'
+    });
+  },
+
+  share: async (id, data) => {
+    return apiRequest(`/documents/${id}/share`, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'document_share_failed'
+    });
+  },
+
+  versions: async (id) => {
+    return apiRequest(`/documents/${id}/versions`, {
+      errorCode: 'document_versions_failed'
+    });
+  }
+};
+
+// ===========================================
+// Reminders
+// ===========================================
+export const reminders = {
+  getAll: async (params = {}) => {
+    return apiRequest(`/reminders${buildQuery(params)}`, {
+      errorCode: 'reminders_list_failed'
+    });
+  },
+
+  getById: async (id) => {
+    return apiRequest(`/reminders/${id}`, {
+      errorCode: 'reminder_get_failed'
+    });
+  },
+
+  create: async (data) => {
+    return apiRequest('/reminders', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'reminder_create_failed'
+    });
+  },
+
+  update: async (id, data) => {
+    return apiRequest(`/reminders/${id}`, {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'reminder_update_failed'
+    });
+  },
+
+  delete: async (id) => {
+    return apiRequest(`/reminders/${id}`, {
+      method: 'DELETE',
+      errorCode: 'reminder_delete_failed'
+    });
+  },
+
+  markComplete: async (id) => {
+    return apiRequest(`/reminders/${id}/complete`, {
+      method: 'POST',
+      errorCode: 'reminder_complete_failed'
+    });
+  },
+
+  upcoming: async () => {
+    return apiRequest('/reminders/upcoming', {
+      errorCode: 'reminders_upcoming_failed'
+    });
+  },
+
+  overdue: async () => {
+    return apiRequest('/reminders/overdue', {
+      errorCode: 'reminders_overdue_failed'
+    });
+  }
+};
+
+// ===========================================
+// Billing
+// ===========================================
+export const billing = {
+  getInvoices: async (params = {}) => {
+    return apiRequest(`/billing/invoices${buildQuery(params)}`, {
+      errorCode: 'billing_list_failed'
+    });
+  },
+
+  getInvoice: async (id) => {
+    return apiRequest(`/billing/invoices/${id}`, {
+      errorCode: 'invoice_get_failed'
+    });
+  },
+
+  createInvoice: async (data) => {
+    return apiRequest('/billing/invoices', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'invoice_create_failed'
+    });
+  },
+
+  updateInvoice: async (id, data) => {
+    return apiRequest(`/billing/invoices/${id}`, {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'invoice_update_failed'
+    });
+  },
+
+  deleteInvoice: async (id) => {
+    return apiRequest(`/billing/invoices/${id}`, {
+      method: 'DELETE',
+      errorCode: 'invoice_delete_failed'
+    });
+  },
+
+  generatePdf: async (id) => {
+    return apiRequestBlob(`/billing/invoices/${id}/pdf`, {
+      errorCode: 'invoice_pdf_failed'
+    });
+  },
+
+  sendEmail: async (id, data) => {
+    return apiRequest(`/billing/invoices/${id}/send-email`, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'invoice_send_failed'
+    });
+  },
+
+  markPaid: async (id, data) => {
+    return apiRequest(`/billing/invoices/${id}/mark-paid`, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'invoice_mark_paid_failed'
+    });
+  },
+
+  getStatistics: async (params = {}) => {
+    return apiRequest(`/billing/statistics${buildQuery(params)}`, {
+      errorCode: 'billing_statistics_failed'
+    });
+  }
+};
+
+// ===========================================
+// Time Tracking
+// ===========================================
+export const timeTracking = {
+  getAll: async (params = {}) => {
+    return apiRequest(`/time-tracking${buildQuery(params)}`, {
+      errorCode: 'time_entries_list_failed'
+    });
+  },
+
+  create: async (data) => {
+    return apiRequest('/time-tracking', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'time_entry_create_failed'
+    });
+  },
+
+  update: async (id, data) => {
+    return apiRequest(`/time-tracking/${id}`, {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'time_entry_update_failed'
+    });
+  },
+
+  delete: async (id) => {
+    return apiRequest(`/time-tracking/${id}`, {
+      method: 'DELETE',
+      errorCode: 'time_entry_delete_failed'
+    });
+  },
+
+  start: async (data) => {
+    return apiRequest('/time-tracking/start', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'time_start_failed'
+    });
+  },
+
+  stop: async () => {
+    return apiRequest('/time-tracking/stop', {
+      method: 'POST',
+      errorCode: 'time_stop_failed'
+    });
+  },
+
+  current: async () => {
+    return apiRequest('/time-tracking/current', {
+      errorCode: 'time_current_failed'
+    });
+  },
+
+  reports: async (params = {}) => {
+    return apiRequest(`/time-tracking/reports${buildQuery(params)}`, {
+      errorCode: 'time_reports_failed'
+    });
+  }
+};
+
+// ===========================================
+// Jurisprudence
+// ===========================================
+export const jurisprudence = {
+  search: async (params = {}) => {
+    return apiRequest(`/jurisprudence/search${buildQuery(params)}`, {
+      errorCode: 'jurisprudence_search_failed'
+    });
+  },
+
+  getById: async (id) => {
+    return apiRequest(`/jurisprudence/${id}`, {
+      errorCode: 'jurisprudence_get_failed'
+    });
+  },
+
+  create: async (data) => {
+    return apiRequest('/jurisprudence', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'jurisprudence_create_failed'
+    });
+  },
+
+  update: async (id, data) => {
+    return apiRequest(`/jurisprudence/${id}`, {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'jurisprudence_update_failed'
+    });
+  },
+
+  delete: async (id) => {
+    return apiRequest(`/jurisprudence/${id}`, {
+      method: 'DELETE',
+      errorCode: 'jurisprudence_delete_failed'
+    });
+  },
+
+  favorite: async (id) => {
+    return apiRequest(`/jurisprudence/${id}/favorite`, {
+      method: 'POST',
+      errorCode: 'jurisprudence_favorite_failed'
+    });
+  },
+
+  similar: async (id) => {
+    return apiRequest(`/jurisprudence/${id}/similar`, {
+      errorCode: 'jurisprudence_similar_failed'
+    });
+  }
+};
+
+// ===========================================
+// Analytics
+// ===========================================
+export const analytics = {
+  dashboard: async (params = {}) => {
+    return apiRequest(`/analytics/dashboard${buildQuery(params)}`, {
+      errorCode: 'analytics_dashboard_failed'
+    });
+  },
+
+  cases: async (params = {}) => {
+    return apiRequest(`/analytics/cases${buildQuery(params)}`, {
+      errorCode: 'analytics_cases_failed'
+    });
+  },
+
+  billing: async (params = {}) => {
+    return apiRequest(`/analytics/billing${buildQuery(params)}`, {
+      errorCode: 'analytics_billing_failed'
+    });
+  },
+
+  time: async (params = {}) => {
+    return apiRequest(`/analytics/time${buildQuery(params)}`, {
+      errorCode: 'analytics_time_failed'
+    });
+  },
+
+  documents: async (params = {}) => {
+    return apiRequest(`/analytics/documents${buildQuery(params)}`, {
+      errorCode: 'analytics_documents_failed'
+    });
+  },
+
+  export: async (format = 'pdf') => {
+    return apiRequestBlob(`/analytics/export?format=${format}`, {
+      errorCode: 'analytics_export_failed'
+    });
+  }
+};
+
+// ===========================================
+// Notifications
+// ===========================================
+export const notifications = {
+  getAll: async () => {
+    return apiRequest('/notifications', {
+      errorCode: 'notifications_list_failed'
+    });
+  },
+
+  getUnread: async () => {
+    return apiRequest('/notifications/unread', {
+      errorCode: 'notifications_unread_failed'
+    });
+  },
+
+  markAsRead: async (id) => {
+    return apiRequest(`/notifications/${id}/read`, {
+      method: 'POST',
+      errorCode: 'notification_mark_read_failed'
+    });
+  },
+
+  markAllAsRead: async () => {
+    return apiRequest('/notifications/mark-all-read', {
+      method: 'POST',
+      errorCode: 'notification_mark_all_read_failed'
+    });
+  },
+
+  getStats: async () => {
+    try {
+      return await apiRequest('/notifications/stats', {
+        errorCode: 'notification_stats_failed'
+      });
+    } catch (error) {
+      console.warn('Falling back to empty notification stats', error);
+      return {
+        unread: 0,
+        high_priority: 0,
+        today: 0,
+      };
+    }
+  }
+};
+
+// ===========================================
+// AI Assistant
+// ===========================================
+export const ai = {
+  chat: async (message, conversationId = null) => {
+    return apiRequest('/ai/chat', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ message, conversation_id: conversationId }),
+      errorCode: 'ai_chat_failed'
+    });
+  },
+
+  conversations: async () => {
+    return apiRequest('/ai/conversations', {
+      errorCode: 'ai_conversations_failed'
+    });
+  },
+
+  getConversation: async (id) => {
+    return apiRequest(`/ai/conversations/${id}`, {
+      errorCode: 'ai_conversation_failed'
+    });
+  },
+
+  generateDocument: async (templateId, data) => {
+    return apiRequest('/ai/generate-document', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ template_id: templateId, data }),
+      errorCode: 'ai_generate_document_failed'
+    });
+  },
+
+  templates: async () => {
+    return apiRequest('/ai/templates', {
+      errorCode: 'ai_templates_failed'
+    });
+  }
+};
+
+// ===========================================
+// Attachments
+// ===========================================
+export const attachments = {
+  list: async (caseId) => {
+    return apiRequest(`/cases/${caseId}/attachments`, {
+      errorCode: 'attachments_list_failed'
+    });
+  },
+
+  upload: async (caseId, formData) => {
+    return apiRequest(`/cases/${caseId}/attachments`, {
+      method: 'POST',
+      headers: fetchConfig.headers,
+      body: formData,
+      errorCode: 'attachment_upload_failed'
+    });
+  },
+
+  download: async (caseId, attachmentId) => {
+    return apiRequestBlob(`/cases/${caseId}/attachments/${attachmentId}/download`, {
+      errorCode: 'attachment_download_failed'
+    });
+  },
+
+  update: async (caseId, attachmentId, data) => {
+    return apiRequest(`/cases/${caseId}/attachments/${attachmentId}`, {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'attachment_update_failed'
+    });
+  },
+
+  delete: async (caseId, attachmentId) => {
+    return apiRequest(`/cases/${caseId}/attachments/${attachmentId}`, {
+      method: 'DELETE',
+      errorCode: 'attachment_delete_failed'
+    });
+  }
+};
+
+// ===========================================
+// User Settings
+// ===========================================
+export const user = {
+  getProfile: async () => {
+    return apiRequest('/user/profile', {
+      errorCode: 'user_profile_get_failed'
+    });
+  },
+
+  updateProfile: async (data) => {
+    // Si hay un archivo, usar FormData
+    if (data instanceof FormData) {
+      return apiRequest('/user/profile', {
+        method: 'POST',
+        headers: fetchConfig.headers,
+        body: data,
+        errorCode: 'user_profile_update_failed'
+      });
+    }
+
+    // Si es JSON simple
+    return apiRequest('/user/profile', {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+      errorCode: 'user_profile_update_failed'
+    });
+  },
+
+  changePassword: async (currentPassword, newPassword, newPasswordConfirmation) => {
+    return apiRequest('/user/password', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+        new_password_confirmation: newPasswordConfirmation
+      }),
+      errorCode: 'user_password_change_failed'
+    });
+  },
+
+  getPreferences: async () => {
+    return apiRequest('/user/preferences', {
+      errorCode: 'user_preferences_get_failed'
+    });
+  },
+
+  updatePreferences: async (preferences) => {
+    return apiRequest('/user/preferences', {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(preferences),
+      errorCode: 'user_preferences_update_failed'
+    });
+  },
+
+  getNotificationSettings: async () => {
+    return apiRequest('/user/notifications', {
+      errorCode: 'user_notifications_get_failed'
+    });
+  },
+
+  updateNotificationSettings: async (settings) => {
+    return apiRequest('/user/notifications', {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(settings),
+      errorCode: 'user_notifications_update_failed'
+    });
+  }
+};
+
+// ===========================================
+// Subscriptions & Billing
+// ===========================================
+export const subscriptions = {
+  getPlans: async () => {
+    return apiRequest('/subscriptions/plans', {
+      errorCode: 'subscriptions_plans_failed'
+    });
+  },
+
+  getCurrent: async () => {
+    return apiRequest('/subscriptions/current', {
+      errorCode: 'subscriptions_current_failed'
+    });
+  },
+
+  checkout: async (planName, billingCycle = 'monthly') => {
+    return apiRequest('/subscriptions/checkout', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ plan: planName, billing_cycle: billingCycle }),
+      errorCode: 'subscriptions_checkout_failed'
+    });
+  },
+
+  getUsage: async () => {
+    return apiRequest('/subscriptions/usage', {
+      errorCode: 'subscriptions_usage_failed'
+    });
+  },
+
+  cancel: async () => {
+    return apiRequest('/subscriptions/cancel', {
+      method: 'POST',
+      errorCode: 'subscriptions_cancel_failed'
+    });
+  }
+};
+
+// ===========================================
+// Legacy compatibility exports
+// ===========================================
+export const login = auth.login;
+export const logout = auth.logout;
+export const me = auth.me;
+export const isAuthenticated = auth.check;
+export const listCases = cases.getAll;
+export const getCase = cases.getById;
+export const createCase = cases.create;
+export const markRead = cases.markRead;
+export const markViewed = cases.markViewed;
+export const refreshCase = cases.refresh;
+export const listDocuments = documents.getAll;
+export const uploadDocument = documents.upload;
+export const deleteDocument = documents.delete;
+export const listReminders = reminders.getAll;
+export const createReminder = reminders.create;
+export const completeReminder = reminders.markComplete;
+export const listTimeEntries = timeTracking.getAll;
+export const listInvoices = billing.getInvoices;
+export const searchJurisprudence = jurisprudence.search;
+export const getAnalyticsDashboard = analytics.dashboard;
+export const getAllNotifications = notifications.getAll;
+export const getUnreadNotifications = notifications.getUnread;
+export const markAsRead = notifications.markAsRead;
+export const markAllAsRead = notifications.markAllAsRead;
+export const getNotificationStats = notifications.getStats;
+
+// Export para compatibilidad con componentes AI
+export const api = {
+  get: (url, options = {}) => apiRequest(url, { method: 'GET', ...options }),
+  post: (url, data, options = {}) => apiRequest(url, { method: 'POST', body: JSON.stringify(data), headers: jsonHeaders(), ...options }),
+  put: (url, data, options = {}) => apiRequest(url, { method: 'PUT', body: JSON.stringify(data), headers: jsonHeaders(), ...options }),
+  delete: (url, options = {}) => apiRequest(url, { method: 'DELETE', ...options })
+};

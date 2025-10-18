@@ -1,157 +1,141 @@
-# Arconte
-**Sistema de Gestión Jurídica con IA**
+# 🏛️ Arconte - Sistema de Gestión Jurídica con IA
 
-Plataforma completa de gestión legal para abogados y bufetes en Colombia. Incluye seguimiento de casos, gestión documental, facturación, recordatorios y asistente de IA.
-
-## ✨ Características Principales
-
-### 🔐 Autenticación y Autorización
-- Registro y login con Laravel Sanctum
-- Sistema de roles y permisos con Spatie Permission
-- Políticas de autorización granular
-- Auditoría completa de acciones
-
-### ⚖️ Gestión de Casos
-- Creación y seguimiento de casos judiciales
-- Partes procesales y actuaciones
-- Monitoreo automático de cambios
-- Sistema de notificaciones inteligente
-- Historial de cambios con diff
-
-### 📄 Gestión Documental
-- Carga y organización de documentos
-- Versionado automático de archivos
-- Carpetas organizadas por caso
-- Sistema de compartición con tokens
-- Soft deletes para recuperación
-- Verificación SHA256 de integridad
-
-### 💰 Facturación y Control de Tiempo
-- Creación de facturas con items detallados
-- Seguimiento de tiempo por caso
-- Tarifas facturables configurables
-- Reportes de tiempo trabajado
-- Estados de factura (draft, sent, paid, cancelled)
-
-### 🔔 Recordatorios
-- Recordatorios vinculados a casos
-- Prioridades configurables
-- Estado de completado
-- Notificaciones programadas (jobs)
-
-### 📚 Jurisprudencia
-- Búsqueda de casos relevantes
-- Almacenamiento de jurisprudencia
-- Servicio especializado de búsqueda
-
-### 👥 Teams
-- Gestión de equipos de trabajo
-- Miembros con roles específicos
-- Colaboración multi-usuario
-
-### 📊 Analytics
-- Dashboard con métricas clave
-- Estadísticas de casos
-- Reportes de actividad
-
-### 🤖 AI Assistant
-- Conversaciones con IA
-- Generación de documentos
-- Plantillas de documentos
-- Historial de mensajes
-
-### 🔍 OCR
-- Extracción de texto de PDFs
-- Procesamiento de imágenes
-- Integración con Tesseract
-
-## 🏗️ Arquitectura
-
-Monorepo con 3 aplicaciones:
-
-- **Backend:** Laravel 12 + Sanctum (API REST)
-- **Frontend:** React 18 + Vite + Tailwind CSS
-- **Ingest Service:** Python FastAPI (scraping Rama Judicial)
+**Plataforma completa de gestión legal para abogados y bufetes en Colombia**
 
 ## 🚀 Inicio Rápido
 
-### Requisitos
-- PHP 8.2+, Composer
-- Node.js 18+
-- Python 3.11+
-- SQLite (dev) o PostgreSQL/MySQL (producción)
-
-### Instalación
-
-**1. Backend (Laravel):**
 ```bash
-cd apps/api_php
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan serve  # http://localhost:8000
+# 1. Backend Laravel
+cd apps/api_php && php artisan serve
+
+# 2. Frontend React
+cd apps/web && npm run dev
+
+# 3. Python Service
+cd apps/ingest_py && python run_persistent.py
 ```
 
-**2. Frontend (React):**
-```bash
-cd apps/web
-npm install
-cp .env.example .env
-npm run dev  # http://localhost:3000
-```
-
-**3. Python Service:**
-```bash
-cd apps/ingest_py
-pip install -r requirements.txt
-python run_persistent.py  # http://localhost:8001
-```
-
-**4. Crear usuario de prueba:**
-```bash
-cd apps/api_php
-php artisan tinker
->>> App\Models\User::create(['name' => 'Admin', 'email' => 'admin@test.com', 'password' => bcrypt('password')]);
-```
-
-Abre http://localhost:3000 y login con `admin@test.com` / `password`
-
-## 📡 API Principal
-
-La API REST está disponible en `http://localhost:8000/api`
-
-**Módulos:** Auth, Cases, Documents, Reminders, Billing, Time Tracking, Jurisprudence, Analytics, AI Assistant, Notifications
-
-Ver documentación completa en `docs/API.md` o ejecutar:
-```bash
-php artisan route:list
-```
-
-## 🧪 Testing
-
-```bash
-cd apps/api_php
-php artisan test  # 26 tests pasando
-```
-
-## 🚀 Deployment
-
-Para desplegar a producción, consulta `GUIA_MAESTRA.md`
-
-Incluye:
-- Configuración de servidor (VPS, Nginx, HTTPS)
-- Variables de entorno de producción
-- Base de datos (PostgreSQL/MySQL)
-- Optimizaciones y cache
-- Troubleshooting
+**Acceso:** http://localhost:3000
+**Credenciales:** admin@juridica.test / admin123
 
 ## 📚 Documentación
 
-- **`GUIA_MAESTRA.md`** - Guía completa de instalación, configuración y deployment
-- **`ANALISIS_PROFUNDO_PROYECTO.md`** - Análisis técnico detallado del proyecto
-- **`docs/`** - Documentación adicional y archivos históricos
+### 📖 Documentos Principales
+
+- **⭐ [ARCONTE_DOCUMENTACION_MAESTRA.md](ARCONTE_DOCUMENTACION_MAESTRA.md)** - Fuente única de verdad del proyecto
+- **[docs/](docs/)** - Documentación organizada por categorías
+  - [Getting Started](docs/getting-started/) - Guías de inicio rápido
+  - [Features](docs/features/) - Suscripciones, vigilancia de autos
+  - [Integraciones](docs/integraciones/) - Rama Judicial, APIs Colombia
+  - [Troubleshooting](docs/troubleshooting/) - Solución de problemas
+  - [Testing](docs/testing/) - Guías de pruebas
+  - [Setup](docs/setup/) - Plan maestro e implementación
+  - [Historial](docs/historial/) - Implementaciones por sprint
+  - [Sesiones](docs/sesiones/) - Reportes de sesiones de trabajo
+
+> 💡 **Nuevo:** Consulta [docs/README.md](docs/README.md) para navegar toda la documentación
+
+## ✨ Características Principales
+
+- ⚖️ **Gestión de Casos** - Seguimiento automático vía Rama Judicial
+- 📄 **Gestión Documental** - Upload, versionado, compartición
+- 💰 **Facturación** - Control de tiempo y generación de facturas
+- 🤖 **AI Assistant** - Chat legal y generación de documentos (Gemini)
+- 🔔 **Recordatorios** - Alertas y notificaciones
+- 📊 **Analytics** - Dashboard y reportes
+
+## 🏗️ Stack Tecnológico
+
+- **Backend:** Laravel 11 + PostgreSQL + Redis
+- **Frontend:** React 18 + Vite + Tailwind CSS
+- **AI:** Gemini 2.5 Flash
+- **Ingest:** Python FastAPI
+
+## 📡 URLs
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+- Python Service: http://localhost:8001
 
 ## 📄 Licencia
 
-Proyecto privado - Todos los derechos reservados.
+Proyecto privado - Todos los derechos reservados
+\n+## Comandos Comunes
+\n+```bash
+# Desde la raíz del repo (Aplicacion Juridica)
+
+# Setup inicial (verifica prerrequisitos, Laravel y frontend)
+npm run setup
+
+# Entorno de desarrollo (Vite + verificación Laravel)
+npm run dev
+
+# Detener servicios (puertos comunes)
+npm run stop
+
+# Limpieza básica / profunda
+npm run clean
+npm run clean:deep
+
+# Frontend directo
+npm run web:dev
+npm run web:build
+npm run web:test
+```
+
+## 🔧 Comandos del Proyecto
+
+### Setup y Desarrollo
+```bash
+# Configuración inicial (verifica prerrequisitos, Laravel y Frontend)
+npm run setup
+
+# Entorno de desarrollo (Vite + verificación Laravel)
+npm run dev
+
+# Detener todos los servicios
+npm run stop
+```
+
+### Limpieza
+```bash
+# Limpieza básica (cachés, logs, artefactos)
+npm run clean
+
+# Limpieza profunda (incluye node_modules)
+npm run clean:deep
+
+# Limpieza avanzada con reporte
+python scripts/maintenance/cleanup.py
+```
+
+### Frontend
+```bash
+# Iniciar Vite dev server
+npm run web:dev
+
+# Build de producción
+npm run web:build
+
+# Ejecutar tests
+npm run web:test
+```
+
+### Scripts Útiles
+```bash
+# Verificar prerrequisitos del sistema
+.\scripts\check_prereqs.ps1  # Windows
+./scripts/check_prereqs.ps1  # Linux/macOS
+
+# Backup de base de datos
+.\scripts\maintenance\backup-database.ps1  # Windows
+./scripts/maintenance/backup-database.sh   # Linux/macOS
+
+# Health check diario
+.\scripts\maintenance\daily-check.ps1  # Windows
+./scripts/maintenance/daily-check.sh   # Linux/macOS
+```
+
+> 📘 **Más comandos:** Consulta [scripts/README.md](scripts/README.md) para documentación completa de scripts
+

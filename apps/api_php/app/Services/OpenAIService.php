@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 class OpenAIService
 {
     private string $apiKey;
-    private string $model = 'gemini-pro';
+    private string $model = 'gemini-2.5-flash';
 
     public function __construct()
     {
@@ -26,7 +26,7 @@ class OpenAIService
             $geminiContents = $this->convertToGeminiFormat($messages);
 
             $response = Http::timeout(60)->post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$this->apiKey}",
+                "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}",
                 [
                     'contents' => $geminiContents,
                     'generationConfig' => [
@@ -50,7 +50,7 @@ class OpenAIService
                         ]
                     ],
                     'usage' => [
-                        'total_tokens' => strlen($data['candidates'][0]['content']['parts'][0]['text'] ?? '') / 4
+                        'total_tokens' => (int) (strlen($data['candidates'][0]['content']['parts'][0]['text'] ?? '') / 4)
                     ]
                 ];
             }

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  web:
+    name: Web - Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Aplicacion Juridica/apps/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: Aplicacion Juridica/apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format Check
+        run: npm run format:check
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (vitest)
+        env:
+          CI: true
+        run: npm run test -- --run
+
+  api_php:
+    name: API PHP - Composer Validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Aplicacion Juridica/apps/api_php
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Validate composer.json
+        run: |
+          composer validate --no-check-publish --strict
+          composer install --no-interaction --prefer-dist --no-ansi --no-progress

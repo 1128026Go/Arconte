@@ -94,3 +94,46 @@ claude/
 .claude/settings.local.json
 scripts/*.log
 
+# Logs específicos
+frontend.log
+ingest.log
+serve.log
+worker.log
+
+# Archivos temporales
+nul
+test-case-*.txt
+
+# Backups locales
+backup_*/
+
+
+# === Logs ===
+*.log
+*.out
+*.err
+
+# === Backups ===
+backup_*/
+*.bak
+*_old
+*_backup
+
+# === Temporales ===
+nul
+temp.*
+test-case-*.txt
+*.tmp
+.backup_name.txt
+.last_backup_name
+
+# === Análisis y reportes temporales ===
+# Usar docs/sesiones/ para reportes permanentes
+ANALISIS_*.md
+
+# === Docker y Producción ===
+# NO ignorar Dockerfiles ni docker-compose
+docker-compose.override.yml
+.env.production  # Nunca commitear variables de producción
+nginx/ssl/*.pem
+nginx/ssl/*.key

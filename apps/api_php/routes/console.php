@@ -29,3 +29,18 @@ Schedule::command('cases:digest')
     ->dailyAt('06:00')
     ->onOneServer()
     ->withoutOverlapping();
+
+// Sincronización nocturna de todos los casos a las 2 AM
+Schedule::command('sync:cases')
+    ->dailyAt('02:00')
+    ->onOneServer()
+    ->withoutOverlapping()
+    ->name('sync-cases-nightly')
+    ->runInBackground();
+
+// Reintentar casos en espera cada 30 minutos
+Schedule::command('cases:refresh-waiting')
+    ->everyThirtyMinutes()
+    ->onOneServer()
+    ->withoutOverlapping()
+    ->name('refresh-waiting-cases');

@@ -50,7 +50,7 @@ def _hash(*parts: Optional[str]) -> str:
     return hashlib.sha256(buf.encode("utf-8")).hexdigest()
 
 
-def normalize_rama_response(raw: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_rama_response(raw: Dict[str, Any], actuaciones_raw: Dict[str, Any] = None) -> Dict[str, Any]:
     """Normaliza el JSON de la Rama Judicial a un esquema interno.
 
     Este helper transforma la estructura de datos devuelta por la API
@@ -68,6 +68,7 @@ def normalize_rama_response(raw: Dict[str, Any]) -> Dict[str, Any]:
 
     Args:
         raw: Diccionario tal y como se recibió de la API oficial.
+        actuaciones_raw: Diccionario opcional con las actuaciones del proceso.
 
     Returns:
         Diccionario con las claves ``case``, ``parties`` y ``acts``.
@@ -99,15 +100,43 @@ def normalize_rama_response(raw: Dict[str, Any]) -> Dict[str, Any]:
     estado_actual = _text(
         detalle.get("Estado")
         or detalle.get("estadoActual")
-        or detalle.get("esPrivado")
     )
 
-    case: Dict[str, Optional[str]] = {
+    # Campos adicionales de Rama Judicial
+    id_proceso_rama = detalle.get("idProceso")
+    fecha_radicacion = _text(detalle.get("fechaProceso"))
+    fecha_ultima_actuacion = _text(detalle.get("fechaUltimaActuacion"))
+    es_privado = detalle.get("esPrivado", False)
+    ponente = _text(detalle.get("ponente"))
+    clase_proceso = _text(detalle.get("clase"))
+    subclase_proceso = _text(detalle.get("subClase"))
+    tipo_proceso = _text(detalle.get("tipoProceso") or detalle.get("tipoProcesoRadicacion"))
+    ubicacion_expediente = _text(detalle.get("ubicacion"))
+    recurso = _text(detalle.get("recurso"))
+    contenido_radicacion = _text(detalle.get("contenidoRadicacion"))
+
+    case: Dict[str, Any] = {
         "radicado": radicado,
         "jurisdiccion": jurisdiccion,
         "juzgado": juzgado,
+        "court": juzgado,  # Alias para compatibilidad con Laravel
+        "despacho": juzgado,  # Alias adicional
+        "status": estado_actual,  # Alias para compatibilidad
         "estado_actual": estado_actual,
         "fuente": "RAMA_API",
+        # Campos adicionales de Rama Judicial
+        "id_proceso": id_proceso_rama,  # Alias para Laravel
+        "id_proceso_rama": id_proceso_rama,
+        "fecha_radicacion": fecha_radicacion,
+        "fecha_ultima_actuacion": fecha_ultima_actuacion,
+        "es_privado": es_privado,
+        "ponente": ponente,
+        "clase_proceso": clase_proceso,
+        "subclase_proceso": subclase_proceso,
+        "tipo_proceso": tipo_proceso,
+        "ubicacion_expediente": ubicacion_expediente,
+        "recurso": recurso,
+        "contenido_radicacion": contenido_radicacion,
     }
 
     # Normalizar partes
@@ -117,10 +146,15 @@ def normalize_rama_response(raw: Dict[str, Any]) -> Dict[str, Any]:
     # Si viene en formato lista
     if isinstance(partes_raw, list) and len(partes_raw) > 0:
         for p in partes_raw:
+            rol = _text(p.get("Rol") or p.get("rol"))
+            nombre = _text(p.get("Nombre") or p.get("nombre"))
+            documento = _text(p.get("Documento") or p.get("documento"))
             parties.append({
-                "rol": _text(p.get("Rol") or p.get("rol")),
-                "nombre": _text(p.get("Nombre") or p.get("nombre")),
-                "documento": _text(p.get("Documento") or p.get("documento")),
+                "rol": rol,
+                "role": rol,  # Alias para Laravel
+                "nombre": nombre,
+                "name": nombre,  # Alias para Laravel
+                "documento": documento,
             })
     # Si viene en formato string "Demandado: NOMBRE | Fiscalia: NOMBRE2"
     elif isinstance(detalle.get("sujetosProcesales"), str):
@@ -131,35 +165,90 @@ def normalize_rama_response(raw: Dict[str, Any]) -> Dict[str, Any]:
                 rol, nombre = parte_str.split(":", 1)
                 # Filtrar entradas que no son partes reales (como "Numero Interno")
                 if rol.strip().lower() not in ["numero interno", "número interno"]:
+                    rol_text = _text(rol.strip())
+                    nombre_text = _text(nombre.strip())
                     parties.append({
-                        "rol": _text(rol.strip()),
-                        "nombre": _text(nombre.strip()),
+                        "rol": rol_text,
+                        "role": rol_text,  # Alias para Laravel
+                        "nombre": nombre_text,
+                        "name": nombre_text,  # Alias para Laravel
                         "documento": None,
                     })
 
     # Normalizar actuaciones
     acts: List[Dict[str, Optional[str]]] = []
-    acts_raw = detalle.get("Actuaciones") or detalle.get("actuaciones") or []
+
+    # Si se pasaron actuaciones por separado (API v2)
+    if actuaciones_raw and isinstance(actuaciones_raw.get("actuaciones"), list):
+        acts_raw = actuaciones_raw["actuaciones"]
+    else:
+        # Buscar en el detalle del proceso (API v1 o legacy)
+        acts_raw = detalle.get("Actuaciones") or detalle.get("actuaciones") or []
+
     if isinstance(acts_raw, list):
         for a in acts_raw:
-            fecha = _text(a.get("Fecha") or a.get("fecha"))
-            tipo = _text(a.get("Tipo") or a.get("tipo"))
-            # Unificar descripción a partir de varios campos opcionales
-            desc = " ".join(filter(None, [
-                _text(a.get("Observacion") or a.get("observacion")),
-                _text(a.get("Anotacion") or a.get("anotacion")),
-                _text(a.get("Descripcion") or a.get("descripcion")),
-            ])) or None
+            # API v2 usa fechaActuacion, actuacion, anotacion
+            fecha = _text(
+                a.get("fechaActuacion") or
+                a.get("Fecha") or
+                a.get("fecha")
+            )
+            tipo = _text(
+                a.get("actuacion") or
+                a.get("Tipo") or
+                a.get("tipo")
+            )
+            # Separar anotación y descripción según estándar Rama Judicial
+            anotacion = _text(
+                a.get("anotacion") or
+                a.get("Anotacion")
+            )
+            # Descripción adicional de observación
+            descripcion = _text(
+                a.get("Observacion") or
+                a.get("observacion") or
+                a.get("Descripcion") or
+                a.get("descripcion")
+            )
+
+            # Verificar si tiene documentos
+            con_documentos = a.get("conDocumentos", False)
             doc_url = _text(a.get("DocumentoURL") or a.get("documentoUrl") or a.get("documento_url"))
 
-            uniq_key = _hash(fecha, tipo, desc)
+            # Campos adicionales de Rama Judicial (plazos e identificadores)
+            id_reg_actuacion = a.get("idRegActuacion")
+            cons_actuacion = a.get("consActuacion")
+            fecha_inicial = _text(a.get("fechaInicial"))
+            fecha_final = _text(a.get("fechaFinal"))  # CRÍTICO para alertas de plazos
+            fecha_registro = _text(a.get("fechaRegistro"))
+            cod_regla = _text(a.get("codRegla"))
+
+            # Crear título combinado para visualización
+            title = anotacion if anotacion else descripcion
+
+            uniq_key = _hash(fecha, tipo, anotacion or descripcion)
             acts.append({
                 "fecha": fecha,
+                "date": fecha,  # Alias para Laravel
                 "tipo": tipo,
-                "descripcion": desc,
+                "type": tipo,  # Alias para Laravel
+                "actuacion": tipo,  # Nombre oficial Rama Judicial
+                "anotacion": anotacion,  # Campo oficial Rama Judicial
+                "descripcion": descripcion,
+                "title": title,  # Alias para Laravel
+                "description": descripcion,  # Alias adicional
                 "documento_url": doc_url,
+                "con_documentos": con_documentos,
                 "origen": "RAMA_API",
                 "uniq_key": uniq_key,
+                "hash": uniq_key,  # Alias para compatibilidad
+                # Campos adicionales de Rama Judicial
+                "id_reg_actuacion": id_reg_actuacion,
+                "cons_actuacion": cons_actuacion,
+                "fecha_inicial": fecha_inicial,
+                "fecha_final": fecha_final,
+                "fecha_registro": fecha_registro,
+                "cod_regla": cod_regla,
             })
 
     return {

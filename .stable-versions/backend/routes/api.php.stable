@@ -1,0 +1,301 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\{
+    ActDocumentController,
+    AIController,
+    AnalyticsController,
+    AttachmentController,
+    AuthController,
+    BillingController,
+    CaseController,
+    DiagnosticsController,
+    DocumentController,
+    JurisprudenceController,
+    LawyerController,
+    NotificationController,
+    ReminderController,
+    SubscriptionController,
+    TimeTrackingController,
+    UserController,
+    WebhookController,
+};
+
+Route::get('/', fn () => response()->json(['message' => 'Arconte API']));
+// Health check simple (DB y cola). Ideal para monitores locales y balanceadores.
+Route::get('/health', function () {
+    // DB
+    $dbOk = false;
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $dbOk = true;
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning('Health /health DB fail', ['error' => $e->getMessage()]);
+    }
+
+    // Queue
+    try {
+        $queueSize = \Illuminate\Support\Facades\Queue::size('default');
+    } catch (\Throwable $e) {
+        $queueSize = null; // si no está configurado, no forzar fallo
+    }
+    $queueOk = is_null($queueSize) ? true : ($queueSize < 100);
+
+    $ok = $dbOk && $queueOk;
+    return response()->json([
+        'ok' => $ok,
+        'db_ok' => $dbOk,
+        'queue_ok' => $queueOk,
+        'queue_size' => $queueSize,
+        'app_env' => app()->environment(),
+    ], $ok ? 200 : 503);
+});
+
+// Health check extremo a extremo
+Route::get('/health/external', function () {
+    $ingest = app(\App\Services\IngestClient::class);
+
+    // Verificar Rama Judicial (via ingest metrics)
+    $ramaOk = false;
+    try {
+        $response = \Illuminate\Support\Facades\Http::timeout(3)
+            ->get(rtrim(env('INGEST_BASE_URL'), '/') . '/metrics');
+        if ($response->successful()) {
+            $metrics = $response->json();
+            // Si el breaker estÃ¡ cerrado, consideramos que Rama estÃ¡ OK
+            $ramaOk = !($metrics['breaker_open'] ?? true);
+        }
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning('Health check: failed to fetch ingest metrics', ['error' => $e->getMessage()]);
+    }
+
+    // Verificar queue
+    $queueSize = \Illuminate\Support\Facades\Queue::size('default');
+    $queueOk = $queueSize < 100;
+
+    // Verificar DB
+    $dbOk = false;
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $dbOk = true;
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Health check: database connection failed', ['error' => $e->getMessage()]);
+    }
+
+    $allOk = $ramaOk && $queueOk && $dbOk;
+
+    return response()->json([
+        'ok' => $allOk,
+        'rama_ok' => $ramaOk,
+        'queue_ok' => $queueOk,
+        'queue_size' => $queueSize,
+        'db_ok' => $dbOk,
+    ], $allOk ? 200 : 503);
+});
+
+// Endpoints debug - Solo disponibles en entornos de desarrollo
+if (app()->environment('local', 'development', 'testing')) {
+    // Endpoint temporal para diagnosticar casos
+    Route::get('/debug/cases/{radicado}', function ($radicado) {
+        $cases = \App\Models\CaseModel::where('radicado', $radicado)->get();
+        return response()->json([
+            'found' => $cases->count(),
+            'cases' => $cases->map(fn($c) => [
+                'id' => $c->id,
+                'radicado' => $c->radicado,
+                'user_id' => $c->user_id,
+                'estado_actual' => $c->estado_actual,
+                'created_at' => $c->created_at,
+            ])
+        ]);
+    });
+
+    // Endpoint temporal para limpiar casos huÃ©rfanos
+    Route::delete('/debug/cases/{radicado}', function ($radicado) {
+        $deleted = \App\Models\CaseModel::where('radicado', $radicado)->delete();
+        \Illuminate\Support\Facades\Cache::flush();
+        return response()->json([
+            'deleted' => $deleted,
+            'message' => "Se eliminaron {$deleted} caso(s)"
+        ]);
+    });
+
+    // Panel de diagnÃ³sticos para admin - /admin/diagnostics
+    Route::prefix('admin/diagnostics')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [DiagnosticsController::class, 'overview']);
+        Route::post('/clear-caches', [DiagnosticsController::class, 'clearCaches']);
+        Route::post('/test-auth-me', [DiagnosticsController::class, 'testAuthMe']);
+        Route::post('/test-csrf', [DiagnosticsController::class, 'testCsrf']);
+        Route::get('/metrics', [DiagnosticsController::class, 'viewMetrics']);
+        Route::post('/test-rama-judicial', [DiagnosticsController::class, 'testRamaJudicial']);
+    });
+}
+
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', [AuthController::class, 'me']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+    });
+});
+
+// Webhooks de ePayco (sin autenticaciÃ³n porque vienen de ePayco)
+Route::prefix('webhooks')->group(function () {
+    Route::post('/epayco/confirmation', [WebhookController::class, 'epaycoConfirmation']);
+    Route::get('/epayco/response', [WebhookController::class, 'epaycoResponse']);
+    Route::post('/epayco/response', [WebhookController::class, 'epaycoResponse']);
+});
+
+// Rutas de suscripciÃ³n
+Route::prefix('subscriptions')->middleware('auth:sanctum')->group(function () {
+    // PÃºblicas (no requieren suscripciÃ³n activa)
+    Route::get('/plans', [SubscriptionController::class, 'plans']);
+    Route::get('/current', [SubscriptionController::class, 'current']);
+    Route::post('/checkout', [SubscriptionController::class, 'checkout']);
+    Route::get('/usage', [SubscriptionController::class, 'usage']);
+
+    // Requieren suscripciÃ³n activa
+    Route::post('/cancel', [SubscriptionController::class, 'cancel']);
+});
+
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    // Cases
+    Route::get('/cases', [CaseController::class, 'index']);
+    Route::post('/cases', [CaseController::class, 'store']);
+    Route::get('/cases/{id}', [CaseController::class, 'show']);
+    Route::post('/cases/{id}/refresh', [CaseController::class, 'refresh']);
+    Route::post('/cases/{id}/read', [CaseController::class, 'markRead']);
+    Route::post('/cases/{id}/mark-viewed', [CaseController::class, 'markViewed']);
+    Route::delete('/cases/{id}', [CaseController::class, 'destroy']);
+    Route::get('/cases/unread-count', [CaseController::class, 'unreadCount']);
+
+    // Case Attachments
+    Route::get('/cases/{caseId}/attachments', [AttachmentController::class, 'index']);
+    Route::post('/cases/{caseId}/attachments', [AttachmentController::class, 'store']);
+    Route::get('/cases/{caseId}/attachments/{id}/download', [AttachmentController::class, 'download']);
+    Route::put('/cases/{caseId}/attachments/{id}', [AttachmentController::class, 'update']);
+    Route::delete('/cases/{caseId}/attachments/{id}', [AttachmentController::class, 'destroy']);
+
+    // Case Act Documents
+    Route::get('/acts/{act}/documents', [ActDocumentController::class, 'index']);
+    Route::post('/acts/{act}/documents/url', [ActDocumentController::class, 'attachByUrl']);
+    Route::post('/acts/{act}/documents/upload', [ActDocumentController::class, 'upload']);
+    Route::get('/documents/{doc}/download', [ActDocumentController::class, 'download'])
+        ->name('documents.download')->middleware('signed');
+    Route::get('/documents/{doc}/text', [ActDocumentController::class, 'text']);
+
+    // Notifications
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/unread', [NotificationController::class, 'unread']);
+        Route::get('/stats', [NotificationController::class, 'stats']);
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+
+        Route::get('/rules', [NotificationController::class, 'getRules']);
+        Route::post('/rules', [NotificationController::class, 'createRule']);
+        Route::put('/rules/{id}', [NotificationController::class, 'updateRule']);
+        Route::delete('/rules/{id}', [NotificationController::class, 'deleteRule']);
+    });
+});
+Route::middleware('auth:sanctum')->group(function () {
+    // Documents
+    Route::get('/documents', [DocumentController::class, 'index']);
+    Route::post('/documents', [DocumentController::class, 'store']);
+    Route::get('/documents/{document}', [DocumentController::class, 'show']);
+    Route::put('/documents/{document}', [DocumentController::class, 'update']);
+    Route::delete('/documents/{document}', [DocumentController::class, 'destroy']);
+    Route::get('/documents/{document}/download', [DocumentController::class, 'download']);
+    Route::get('/documents/{document}/versions', [DocumentController::class, 'versions']);
+    Route::post('/documents/{document}/share', [DocumentController::class, 'share']);
+
+    // Reminders
+    Route::get('/reminders', [ReminderController::class, 'index']);
+    Route::post('/reminders', [ReminderController::class, 'store']);
+    Route::put('/reminders/{reminder}', [ReminderController::class, 'update']);
+    Route::delete('/reminders/{reminder}', [ReminderController::class, 'destroy']);
+    Route::post('/reminders/{reminder}/complete', [ReminderController::class, 'markComplete']);
+    Route::get('/reminders/upcoming', [ReminderController::class, 'upcoming']);
+    Route::get('/reminders/overdue', [ReminderController::class, 'overdue']);
+
+    // Billing
+    Route::get('/billing/invoices', [BillingController::class, 'index']);
+    Route::post('/billing/invoices', [BillingController::class, 'store']);
+    Route::get('/billing/invoices/{invoice}', [BillingController::class, 'show']);
+    Route::put('/billing/invoices/{invoice}', [BillingController::class, 'update']);
+    Route::delete('/billing/invoices/{invoice}', [BillingController::class, 'destroy']);
+    Route::get('/billing/invoices/{invoice}/pdf', [BillingController::class, 'generatePdf']);
+    Route::post('/billing/invoices/{invoice}/send', [BillingController::class, 'sendEmail']);
+    Route::post('/billing/invoices/{invoice}/mark-paid', [BillingController::class, 'markPaid']);
+    Route::get('/billing/statistics', [BillingController::class, 'statistics']);
+
+    // Time Tracking
+    Route::get('/time-tracking', [TimeTrackingController::class, 'index']);
+    Route::post('/time-tracking', [TimeTrackingController::class, 'store']);
+    Route::put('/time-tracking/{entry}', [TimeTrackingController::class, 'update']);
+    Route::delete('/time-tracking/{entry}', [TimeTrackingController::class, 'destroy']);
+    Route::post('/time-tracking/start', [TimeTrackingController::class, 'start']);
+    Route::post('/time-tracking/stop', [TimeTrackingController::class, 'stop']);
+    Route::get('/time-tracking/current', [TimeTrackingController::class, 'current']);
+    Route::get('/time-tracking/reports', [TimeTrackingController::class, 'reports']);
+    Route::get('/time-tracking/export', [TimeTrackingController::class, 'export']);
+
+    // Jurisprudence
+    Route::get('/jurisprudence', [JurisprudenceController::class, 'index']);
+    Route::post('/jurisprudence', [JurisprudenceController::class, 'store']);
+    Route::get('/jurisprudence/{case}', [JurisprudenceController::class, 'show']);
+    Route::put('/jurisprudence/{case}', [JurisprudenceController::class, 'update']);
+    Route::delete('/jurisprudence/{case}', [JurisprudenceController::class, 'destroy']);
+    Route::get('/jurisprudence/search', [JurisprudenceController::class, 'search']);
+    Route::get('/jurisprudence/{case}/similar', [JurisprudenceController::class, 'similar']);
+    Route::post('/jurisprudence/{case}/favorite', [JurisprudenceController::class, 'favorite']);
+
+    // Analytics
+    Route::get('/analytics/dashboard', [AnalyticsController::class, 'dashboard']);
+    Route::get('/analytics/cases', [AnalyticsController::class, 'cases']);
+    Route::get('/analytics/billing', [AnalyticsController::class, 'billing']);
+    Route::get('/analytics/time', [AnalyticsController::class, 'time']);
+    Route::get('/analytics/documents', [AnalyticsController::class, 'documents']);
+    Route::get('/analytics/predictions', [AnalyticsController::class, 'predictions']);
+
+    // AI Assistant
+    Route::post('/ai/chat', [AIController::class, 'chat']);
+    Route::get('/ai/conversations', [AIController::class, 'listConversations']);
+    Route::get('/ai/conversations/{id}', [AIController::class, 'getConversation']);
+    Route::post('/ai/generate-document', [AIController::class, 'generateDocument']);
+    Route::get('/ai/documents', [AIController::class, 'listGeneratedDocuments']);
+    Route::get('/ai/documents/{id}', [AIController::class, 'getGeneratedDocument']);
+    Route::put('/ai/documents/{id}', [AIController::class, 'updateGeneratedDocument']);
+
+    // User Settings
+    Route::prefix('user')->group(function () {
+        Route::get('/profile', [UserController::class, 'getProfile']);
+        Route::put('/profile', [UserController::class, 'updateProfile']);
+        Route::post('/profile', [UserController::class, 'updateProfile']); // Aceptar POST para upload de archivos
+        Route::post('/password', [UserController::class, 'changePassword']);
+        Route::get('/preferences', [UserController::class, 'getPreferences']);
+        Route::put('/preferences', [UserController::class, 'updatePreferences']);
+        Route::get('/notifications', [UserController::class, 'getNotificationSettings']);
+        Route::put('/notifications', [UserController::class, 'updateNotificationSettings']);
+    });
+
+    // Marketplace - Lawyers
+    Route::prefix('lawyers')->group(function () {
+        Route::get('/', [LawyerController::class, 'index']);
+        Route::post('/', [LawyerController::class, 'store']);
+        Route::get('/statistics', [LawyerController::class, 'statistics']);
+        Route::get('/search', [LawyerController::class, 'search']);
+        Route::get('/specialties', [LawyerController::class, 'specialties']);
+        Route::get('/cities', [LawyerController::class, 'cities']);
+        Route::get('/{id}', [LawyerController::class, 'show']);
+        Route::put('/{id}', [LawyerController::class, 'update']);
+        Route::delete('/{id}', [LawyerController::class, 'destroy']);
+    });
+});
+
+// Public routes
+Route::get('/documents/shared/{token}', [DocumentController::class, 'shared'])->name('documents.shared');
+
+

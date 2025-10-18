@@ -22,11 +22,17 @@ class AuthController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
-        $token = $user->createToken('api')->plainTextToken;
+        // Usar autenticación por sesión de Laravel (stateful)
+        auth()->login($user, true);
+        $request->session()->regenerate();
 
         return response()->json([
-            'user' => $user,
-            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'message' => 'Usuario registrado exitosamente'
         ], 201);
     }
 
@@ -45,11 +51,17 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $token = $user->createToken('api')->plainTextToken;
+        // Usar autenticación por sesión de Laravel (stateful)
+        auth()->login($user, true);
+        $request->session()->regenerate();
 
         return response()->json([
-            'user' => $user,
-            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'message' => 'Login exitoso'
         ]);
     }
 
@@ -63,13 +75,78 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ],
-        ]);
+        ])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-        return response()->json(['ok' => true]);
+        // Parámetros comunes de cookies
+        $cookieDomain = config('session.domain');
+        $cookiePath = config('session.path', '/');
+        $cookieSameSite = config('session.same_site', 'lax');
+
+        // Respuesta base
+        $response = response()->json([
+            'ok' => true,
+            'message' => 'Sesión cerrada exitosamente'
+        ]);
+
+        // Borrar XSRF-TOKEN (no httpOnly) en variantes de dominio
+        foreach ([null, 'localhost'] as $domainVariant) {
+            $response->headers->setCookie(cookie(
+                'XSRF-TOKEN',
+                '',
+                -2628000,
+                $cookiePath,
+                $domainVariant,
+                false,
+                false,
+                false,
+                $cookieSameSite
+            ));
+        }
+
+        // Borrar cookie de sesión en variantes de dominio
+        foreach ([null, 'localhost'] as $domainVariant) {
+            $response->headers->setCookie(cookie(
+                config('session.cookie'),
+                '',
+                -2628000,
+                $cookiePath,
+                $domainVariant,
+                config('session.secure', false),
+                config('session.http_only', true),
+                false,
+                $cookieSameSite
+            ));
+        }
+
+        // Borrar cookies "remember_me" (nombre dinámico tipo remember_web_*)
+        foreach ($request->cookies->keys() as $cookieName) {
+            if (str_starts_with($cookieName, 'remember_')) {
+                foreach ([null, 'localhost'] as $domainVariant) {
+                    $response->headers->setCookie(cookie(
+                        $cookieName,
+                        '',
+                        -2628000,
+                        $cookiePath,
+                        $domainVariant,
+                        config('session.secure', false),
+                        true, // normalmente httpOnly
+                        false,
+                        $cookieSameSite
+                    ));
+                }
+            }
+        }
+
+        return $response;
     }
 }

@@ -32,7 +32,10 @@ export default function Reminders() {
       const response = await reminders.getAll();
       setAllReminders(response.data || []);
     } catch (error) {
-      console.error('Error loading reminders:', error);
+      // Error silencioso para mejor UX, se puede logear en development
+      if (import.meta.env.DEV) {
+        console.error('Error loading reminders:', error);
+      }
     } finally {
       setLoading(false);
     }

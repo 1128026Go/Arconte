@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { listCases, getNotificationStats } from "../lib/api";
 import MainLayout from "../components/Layout/MainLayout";
+import { Link } from "react-router-dom";
 import {
   Folder, Bell, AlertTriangle, Calendar,
-  TrendingUp, TrendingDown
+  TrendingUp, TrendingDown, Crown, Zap
 } from 'lucide-react';
 import { BarChart3, FileText, ArrowRight } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -143,6 +144,43 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Subscription Promo Banner */}
+      <Link to="/subscription" className="block mb-8">
+        <div className="relative overflow-hidden bg-gradient-to-r from-gold-500 via-gold-600 to-navy-800 rounded-xl p-8 hover:shadow-2xl transition-all duration-300 group">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)',
+              backgroundSize: '30px 30px'
+            }}></div>
+          </div>
+
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4 flex-1">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0">
+                <Crown className="w-8 h-8 text-white" />
+              </div>
+              <div className="text-white">
+                <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                  Potencia tu práctica legal
+                  <Zap className="w-6 h-6 text-yellow-300" />
+                </h3>
+                <p className="text-white/90 text-lg">
+                  Desbloquea casos ilimitados, IA legal avanzada y más con nuestros planes profesionales
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-shrink-0">
+              <div className="bg-white text-navy-900 px-8 py-4 rounded-lg font-bold text-lg shadow-xl group-hover:scale-105 transition-transform flex items-center gap-2">
+                Ver Planes
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

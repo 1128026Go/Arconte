@@ -1,0 +1,261 @@
+﻿version: '3.8'
+
+services:
+  # Laravel API
+  api:
+    build:
+      context: ./apps/api_php
+      dockerfile: Dockerfile.production
+    # container_name: arconte-api
+    restart: unless-stopped
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./apps/api_php:/var/www/html
+      - api-storage:/var/www/html/storage
+    networks:
+      - arconte-network
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4GB
+        reservations:
+          cpus: '1'
+          memory: 2GB
+
+  # React Frontend
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.production
+    # container_name: arconte-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${API_URL}
+    networks:
+      - arconte-network
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2GB
+
+  # Python Ingest Service
+  ingest:
+    build:
+      context: ./apps/ingest_py
+      dockerfile: Dockerfile.production
+    # container_name: arconte-ingest
+    restart: unless-stopped
+    environment:
+      - INGEST_API_KEY=${INGEST_API_KEY}
+      - PORT=8001
+    networks:
+      - arconte-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1GB
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    # container_name: arconte-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backups/postgres:/backups
+    networks:
+      - arconte-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4GB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    # container_name: arconte-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - arconte-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1GB
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Nginx Load Balancer & Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    # container_name: arconte-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./apps/web/dist:/usr/share/nginx/html:ro
+    networks:
+      - arconte-network
+    depends_on:
+      - api
+      - web
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512MB
+
+  # Laravel Queue Worker
+  queue:
+    build:
+      context: ./apps/api_php
+      dockerfile: Dockerfile.production
+    # container_name: arconte-queue
+    restart: unless-stopped
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+    environment:
+      - APP_ENV=production
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+    volumes:
+      - ./apps/api_php:/var/www/html
+      - api-storage:/var/www/html/storage
+    networks:
+      - arconte-network
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1GB
+
+  # Laravel Scheduler (Cron)
+  scheduler:
+    build:
+      context: ./apps/api_php
+      dockerfile: Dockerfile.production
+    # container_name: arconte-scheduler
+    restart: unless-stopped
+    command: /bin/sh -c "while true; do php artisan schedule:run; sleep 60; done"
+    environment:
+      - APP_ENV=production
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+    volumes:
+      - ./apps/api_php:/var/www/html
+    networks:
+      - arconte-network
+    depends_on:
+      - postgres
+      - redis
+
+  # Backup Service
+  backup:
+    image: postgres:16-alpine
+    # container_name: arconte-backup
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    networks:
+      - arconte-network
+    depends_on:
+      - postgres
+    command: /bin/sh -c "chmod +x /backup.sh && crond -f -l 2"
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    # container_name: arconte-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - arconte-network
+    ports:
+      - "9090:9090"
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    # container_name: arconte-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SERVER_ROOT_URL=https://monitoring.arconte.com
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - arconte-network
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+networks:
+  arconte-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  api-storage:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+

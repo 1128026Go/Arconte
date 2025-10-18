@@ -25,15 +25,31 @@ class CaseModel extends Model
         'ultimo_hash',
         'last_checked_at',
         'last_seen_at',
+        'last_viewed_at',
         'has_unread',
         'estado_checked',
+        // Campos adicionales de Rama Judicial
+        'id_proceso_rama',
+        'fecha_radicacion',
+        'fecha_ultima_actuacion',
+        'es_privado',
+        'ponente',
+        'clase_proceso',
+        'subclase_proceso',
+        'ubicacion_expediente',
+        'recurso',
+        'contenido_radicacion',
     ];
 
     protected $casts = [
         'last_checked_at' => 'datetime',
         'last_seen_at' => 'datetime',
+        'last_viewed_at' => 'datetime',
         'has_unread' => 'boolean',
         'estado_checked' => 'boolean',
+        'fecha_radicacion' => 'date',
+        'fecha_ultima_actuacion' => 'date',
+        'es_privado' => 'boolean',
     ];
 
     protected $attributes = [
@@ -54,5 +70,10 @@ class CaseModel extends Model
     public function acts(): HasMany
     {
         return $this->hasMany(CaseAct::class, 'case_model_id')->orderByDesc('fecha');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class, 'case_id');
     }
 }

@@ -1,72 +1,30 @@
-name: Deploy to Production
+name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [ staging, main ]
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
-  test:
+  # ==========================================
+  # Deploy to Staging
+  # ==========================================
+  deploy-staging:
+    name: Deploy to Staging
     runs-on: ubuntu-latest
-    name: Run Tests
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: arconte_test
-          POSTGRES_USER: arconte
-          POSTGRES_PASSWORD: secret
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: pdo, pdo_pgsql, redis
-          coverage: none
-
-      - name: Install Dependencies
-        working-directory: apps/api_php
-        run: |
-          composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Run Migrations
-        working-directory: apps/api_php
-        env:
-          DB_CONNECTION: pgsql
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_DATABASE: arconte_test
-          DB_USERNAME: arconte
-          DB_PASSWORD: secret
-        run: |
-          php artisan migrate --force
-
-      - name: Run Tests
-        working-directory: apps/api_php
-        env:
-          DB_CONNECTION: pgsql
-          DB_HOST: localhost
-          DB_DATABASE: arconte_test
-        run: |
-          php artisan test
-
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    needs: test
-    name: Build and Deploy
+    if: github.ref == 'refs/heads/staging' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment:
+      name: staging
+      url: https://staging.arconte.app
 
     steps:
       - name: Checkout code
@@ -75,112 +33,268 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
           cache-dependency-path: apps/web/package-lock.json
 
-      - name: Build Frontend
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer
+
+      - name: Install frontend dependencies
         working-directory: apps/web
-        run: |
-          npm ci
-          npm run build
+        run: npm ci
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push Docker images
+      - name: Build frontend for staging
+        working-directory: apps/web
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          # Build API
-          docker build -t $ECR_REGISTRY/arconte-api:$IMAGE_TAG ./apps/api_php
-          docker push $ECR_REGISTRY/arconte-api:$IMAGE_TAG
+          VITE_API_URL: ${{ secrets.STAGING_API_URL }}
+          VITE_APP_NAME: Arconte (Staging)
+          VITE_APP_URL: https://staging.arconte.app
+        run: npm run build
 
-          # Build Web
-          docker build -t $ECR_REGISTRY/arconte-web:$IMAGE_TAG ./apps/web
-          docker push $ECR_REGISTRY/arconte-web:$IMAGE_TAG
+      - name: Install backend dependencies
+        working-directory: apps/api_php
+        run: composer install --prefer-dist --no-progress --no-interaction --no-dev --optimize-autoloader
 
-          # Build Ingest
-          docker build -t $ECR_REGISTRY/arconte-ingest:$IMAGE_TAG ./apps/ingest_py
-          docker push $ECR_REGISTRY/arconte-ingest:$IMAGE_TAG
-
-      - name: Deploy to ECS
-        run: |
-          aws ecs update-service --cluster arconte-production \
-            --service arconte-api --force-new-deployment
-
-          aws ecs update-service --cluster arconte-production \
-            --service arconte-web --force-new-deployment
-
-          aws ecs update-service --cluster arconte-production \
-            --service arconte-ingest --force-new-deployment
-
-      - name: Run Database Migrations
-        run: |
-          aws ecs run-task --cluster arconte-production \
-            --task-definition arconte-migrate \
-            --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx],assignPublicIp=ENABLED}"
-
-      - name: Invalidate CloudFront Cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --paths "/*"
-
-      - name: Notify Deployment
-        uses: 8398a7/action-slack@v3
-        if: always()
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
         with:
-          status: ${{ job.status }}
-          text: 'Deployment to production: ${{ job.status }}'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-          fields: repo,message,commit,author,action,eventName,ref,workflow
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_PORT }}
+          script: |
+            cd ${{ secrets.STAGING_PATH }}
 
-  health-check:
+            # Pull latest code
+            git pull origin staging
+
+            # Backend deployment
+            cd apps/api_php
+            composer install --no-dev --optimize-autoloader
+            php artisan down --message="Deploying updates" --retry=60
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+            php artisan optimize
+            php artisan queue:restart
+            php artisan up
+
+            # Frontend deployment
+            cd ../web
+            npm ci
+            npm run build
+
+            # Restart services
+            sudo systemctl restart php8.4-fpm
+            sudo systemctl reload nginx
+
+            echo "✅ Deployment to staging completed"
+
+      - name: Health check
+        run: |
+          sleep 10
+          response=$(curl -f -s -o /dev/null -w "%{http_code}" https://staging.arconte.app/api/health || echo "000")
+          if [ "$response" = "200" ]; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed with status: $response"
+            exit 1
+          fi
+
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "## ✅ Staging Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: Staging" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://staging.arconte.app" >> $GITHUB_STEP_SUMMARY
+
+  # ==========================================
+  # Deploy to Production
+  # ==========================================
+  deploy-production:
+    name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: build-and-deploy
-    name: Health Check
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://arconte.app
+    needs: []
 
     steps:
-      - name: Wait for deployment
-        run: sleep 30
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Check API Health
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build frontend for production
+        working-directory: apps/web
+        env:
+          VITE_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+          VITE_APP_NAME: Arconte
+          VITE_APP_URL: https://arconte.app
+        run: npm run build
+
+      - name: Install backend dependencies
+        working-directory: apps/api_php
+        run: composer install --prefer-dist --no-progress --no-interaction --no-dev --optimize-autoloader
+
+      - name: Create backup before deployment
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            cd ${{ secrets.PRODUCTION_PATH }}
+            timestamp=$(date +%Y%m%d_%H%M%S)
+            mkdir -p ../backups
+            tar -czf "../backups/backup_${timestamp}.tar.gz" .
+            echo "✅ Backup created: backup_${timestamp}.tar.gz"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            cd ${{ secrets.PRODUCTION_PATH }}
+
+            # Pull latest code
+            git pull origin main
+
+            # Backend deployment
+            cd apps/api_php
+            composer install --no-dev --optimize-autoloader
+            php artisan down --message="Deploying updates" --retry=60
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+            php artisan optimize
+            php artisan queue:restart
+            php artisan up
+
+            # Frontend deployment
+            cd ../web
+            npm ci
+            npm run build
+
+            # Restart services
+            sudo systemctl restart php8.4-fpm
+            sudo systemctl reload nginx
+
+            echo "✅ Deployment to production completed"
+
+      - name: Health check
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" https://api.arconte.com/health)
-          if [ $response -eq 200 ]; then
-            echo "API is healthy ✓"
+          sleep 10
+          response=$(curl -f -s -o /dev/null -w "%{http_code}" https://arconte.app/api/health || echo "000")
+          if [ "$response" = "200" ]; then
+            echo "✅ Health check passed"
           else
-            echo "API health check failed with status: $response"
+            echo "❌ Health check failed with status: $response"
             exit 1
           fi
 
-      - name: Check Web Health
+      - name: Notify deployment
+        if: success()
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" https://arconte.com/health)
-          if [ $response -eq 200 ]; then
-            echo "Web is healthy ✓"
-          else
-            echo "Web health check failed with status: $response"
-            exit 1
-          fi
+          echo "## ✅ Production Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: Production" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://arconte.app" >> $GITHUB_STEP_SUMMARY
 
-      - name: Run Smoke Tests
-        run: |
-          # Test login endpoint
-          curl -X POST https://api.arconte.com/api/auth/login \
-            -H "Content-Type: application/json" \
-            -d '{"email":"test@arconte.com","password":"test123"}' \
-            -f || exit 1
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            cd ${{ secrets.PRODUCTION_PATH }}
 
-          echo "Smoke tests passed ✓"
+            # Find latest backup
+            latest_backup=$(ls -t ../backups/backup_*.tar.gz | head -1)
+
+            if [ -n "$latest_backup" ]; then
+              echo "🔄 Rolling back to: $latest_backup"
+
+              # Extract backup
+              tar -xzf "$latest_backup" -C .
+
+              # Restart services
+              cd apps/api_php
+              php artisan up
+              sudo systemctl restart php8.4-fpm
+              sudo systemctl reload nginx
+
+              echo "✅ Rollback completed"
+            else
+              echo "❌ No backup found for rollback"
+              exit 1
+            fi
+
+  # ==========================================
+  # Database Backup (Production only)
+  # ==========================================
+  backup-database:
+    name: Backup Production Database
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Backup database via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            timestamp=$(date +%Y%m%d_%H%M%S)
+            mkdir -p ~/db_backups
+
+            # Backup PostgreSQL database
+            PGPASSWORD="${{ secrets.DB_PASSWORD }}" pg_dump \
+              -h localhost \
+              -U ${{ secrets.DB_USERNAME }} \
+              -d ${{ secrets.DB_DATABASE }} \
+              -F c \
+              -f ~/db_backups/arconte_${timestamp}.dump
+
+            # Keep only last 7 days of backups
+            find ~/db_backups -name "arconte_*.dump" -mtime +7 -delete
+
+            echo "✅ Database backup created: arconte_${timestamp}.dump"

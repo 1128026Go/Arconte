@@ -11,17 +11,79 @@ import {
   Award,
   TrendingUp,
   Filter,
-  DollarSign
+  DollarSign,
+  Loader2
 } from 'lucide-react';
+import api from '../lib/api';
 
 export default function Marketplace() {
   const [lawyers, setLawyers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [city, setCity] = useState('');
+  const [specialties, setSpecialties] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [stats, setStats] = useState(null);
 
-  // Mock data - replace with API call
+  // Fetch initial data
+  useEffect(() => {
+    fetchLawyers();
+    fetchSpecialties();
+    fetchCities();
+    fetchStats();
+  }, []);
+
+  // Fetch lawyers when filters change
+  useEffect(() => {
+    fetchLawyers();
+  }, [specialty, city, searchTerm]);
+
+  const fetchLawyers = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (specialty) params.append('specialty', specialty);
+      if (city) params.append('city', city);
+      if (searchTerm) params.append('search', searchTerm);
+
+      const response = await api.get(`/lawyers?${params.toString()}`);
+      setLawyers(response.data.data || response.data);
+    } catch (error) {
+      console.error('Error fetching lawyers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSpecialties = async () => {
+    try {
+      const response = await api.get('/lawyers/specialties');
+      setSpecialties(response.data);
+    } catch (error) {
+      console.error('Error fetching specialties:', error);
+    }
+  };
+
+  const fetchCities = async () => {
+    try {
+      const response = await api.get('/lawyers/cities');
+      setCities(response.data);
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await api.get('/lawyers/statistics');
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  // Backup mock data in case API fails
   const mockLawyers = [
     {
       id: 1,
@@ -61,17 +123,7 @@ export default function Marketplace() {
     }
   ];
 
-  useEffect(() => {
-    setLawyers(mockLawyers);
-  }, []);
-
-  const filteredLawyers = lawyers.filter(lawyer => {
-    const matchesSearch = lawyer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lawyer.specialty.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSpecialty = !specialty || lawyer.specialty === specialty;
-    const matchesCity = !city || lawyer.city === city;
-    return matchesSearch && matchesSpecialty && matchesCity;
-  });
+  const displayLawyers = lawyers.length > 0 ? lawyers : mockLawyers;
 
   return (
     <MainLayout>
@@ -109,10 +161,9 @@ export default function Marketplace() {
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-gold-500"
             >
               <option value="">Todas las especialidades</option>
-              <option value="Derecho Laboral">Derecho Laboral</option>
-              <option value="Derecho Civil">Derecho Civil</option>
-              <option value="Derecho Penal">Derecho Penal</option>
-              <option value="Derecho Comercial">Derecho Comercial</option>
+              {specialties.map(spec => (
+                <option key={spec} value={spec}>{spec}</option>
+              ))}
             </select>
             <select
               value={city}
@@ -120,71 +171,76 @@ export default function Marketplace() {
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-gold-500"
             >
               <option value="">Todas las ciudades</option>
-              <option value="Bogotá">Bogotá</option>
-              <option value="Medellín">Medellín</option>
-              <option value="Cali">Cali</option>
-              <option value="Barranquilla">Barranquilla</option>
+              {cities.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
             </select>
           </div>
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border-navy-200">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-navy-100 p-2">
-                <Briefcase className="h-5 w-5 text-navy-700" />
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="border-navy-200">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-navy-100 p-2">
+                  <Briefcase className="h-5 w-5 text-navy-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600">Abogados</p>
+                  <p className="text-2xl font-bold text-navy-900">{stats.total_lawyers}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-slate-600">Abogados</p>
-                <p className="text-2xl font-bold text-navy-900">{lawyers.length}</p>
+            </Card>
+            <Card className="border-gold-200">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-gold-100 p-2">
+                  <Award className="h-5 w-5 text-gold-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600">Verificados</p>
+                  <p className="text-2xl font-bold text-navy-900">{stats.verified_lawyers}</p>
+                </div>
               </div>
-            </div>
-          </Card>
-          <Card className="border-gold-200">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-gold-100 p-2">
-                <Award className="h-5 w-5 text-gold-700" />
+            </Card>
+            <Card className="border-primary-200">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary-100 p-2">
+                  <TrendingUp className="h-5 w-5 text-primary-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600">Rating Promedio</p>
+                  <p className="text-2xl font-bold text-navy-900">
+                    {stats.average_rating ? parseFloat(stats.average_rating).toFixed(1) : '0.0'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-slate-600">Verificados</p>
-                <p className="text-2xl font-bold text-navy-900">
-                  {lawyers.filter(l => l.verified).length}
-                </p>
+            </Card>
+            <Card className="border-success-200">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-success-100 p-2">
+                  <Star className="h-5 w-5 text-success-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600">Casos Ganados</p>
+                  <p className="text-2xl font-bold text-navy-900">{stats.total_cases_won}</p>
+                </div>
               </div>
-            </div>
-          </Card>
-          <Card className="border-primary-200">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary-100 p-2">
-                <TrendingUp className="h-5 w-5 text-primary-700" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-600">Rating Promedio</p>
-                <p className="text-2xl font-bold text-navy-900">
-                  {(lawyers.reduce((acc, l) => acc + l.rating, 0) / lawyers.length).toFixed(1)}
-                </p>
-              </div>
-            </div>
-          </Card>
-          <Card className="border-success-200">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-success-100 p-2">
-                <Star className="h-5 w-5 text-success-700" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-600">Casos Ganados</p>
-                <p className="text-2xl font-bold text-navy-900">
-                  {lawyers.reduce((acc, l) => acc + l.cases_won, 0)}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+          </div>
+        )}
 
         {/* Lawyers List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredLawyers.map(lawyer => (
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayLawyers.map(lawyer => (
             <Card key={lawyer.id} className="hover:shadow-lg transition-shadow">
               <div className="space-y-4">
                 {/* Header */}
@@ -206,18 +262,20 @@ export default function Marketplace() {
                 </div>
 
                 {/* Match Score */}
-                <div className="bg-navy-50 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-navy-700 font-medium">Match Score</span>
-                    <span className="text-2xl font-bold text-navy-900">{lawyer.match_score}%</span>
+                {lawyer.match_score && (
+                  <div className="bg-navy-50 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-navy-700 font-medium">Match Score</span>
+                      <span className="text-2xl font-bold text-navy-900">{lawyer.match_score}%</span>
+                    </div>
+                    <div className="w-full bg-navy-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-gold-500 to-gold-600 h-2 rounded-full"
+                        style={{ width: `${lawyer.match_score}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-navy-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-gold-500 to-gold-600 h-2 rounded-full"
-                      style={{ width: `${lawyer.match_score}%` }}
-                    ></div>
-                  </div>
-                </div>
+                )}
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -255,10 +313,11 @@ export default function Marketplace() {
                 </div>
               </div>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {filteredLawyers.length === 0 && (
+        {!loading && displayLawyers.length === 0 && (
           <Card>
             <div className="text-center py-12">
               <p className="text-slate-500">No se encontraron abogados con los filtros seleccionados</p>

@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    'epayco' => [
+        'public_key' => env('EPAYCO_PUBLIC_KEY'),
+        'private_key' => env('EPAYCO_PRIVATE_KEY'),
+        'p_cust_id_cliente' => env('EPAYCO_P_CUST_ID_CLIENTE'),
+        'customer_id' => env('EPAYCO_CUSTOMER_ID'),
+        'test_mode' => env('EPAYCO_TEST_MODE', true),
+        'url_confirmation' => env('EPAYCO_URL_CONFIRMATION', env('APP_URL') . '/api/webhooks/epayco/confirmation'),
+        'url_response' => env('EPAYCO_URL_RESPONSE', env('APP_URL') . '/checkout/response'),
+    ],
+
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+    ],
+
 ];

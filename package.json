@@ -1,0 +1,50 @@
+{
+    "name": "arconte",
+    "version": "1.0.0",
+    "description": "Sistema de GestiÃ³n JurÃ­dica con IA - Arconte",
+    "private": true,
+    "workspaces": [
+        "apps/web",
+        "apps/api_php"
+    ],
+    "scripts": {
+        "setup": "powershell -ExecutionPolicy Bypass -File scripts/dev/setup.ps1",
+        "dev": "powershell -ExecutionPolicy Bypass -File scripts/dev/dev.ps1",
+        "dev:all": "scripts/dev/start-all.bat",
+        "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/dev/dev.ps1 -Clean",
+        "dev:build": "npm --workspace apps/web run build",
+        "stop": "powershell -ExecutionPolicy Bypass -File scripts/dev/dev.ps1 -StopAll",
+        "clean": "powershell -ExecutionPolicy Bypass -File scripts/maintenance/cleanup.ps1",
+        "clean:deep": "powershell -ExecutionPolicy Bypass -File scripts/maintenance/cleanup.ps1 -Deep",
+        "test": "cd tests && node test_auth_migration.js",
+        "web:dev": "npm --workspace apps/web run dev",
+        "web:build": "npm --workspace apps/web run build",
+        "web:test": "npm --workspace apps/web run test -- --run",
+        "web:coverage": "npm --workspace apps/web run coverage",
+        "prod:validate": "bash scripts/production/validate-deployment.sh",
+        "prod:build": "bash scripts/production/build.sh",
+        "prod:deploy": "bash scripts/production/deploy.sh"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/1128026Go/Arconte.git"
+    },
+    "keywords": [
+        "legal",
+        "ai",
+        "laravel",
+        "react",
+        "arconte"
+    ],
+    "author": "Arconte Team",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/1128026Go/Arconte/issues"
+    },
+    "homepage": "https://github.com/1128026Go/Arconte#readme",
+    "devDependencies": {
+        "autoprefixer": "^10.4.21",
+        "concurrently": "^8.2.2",
+        "tailwindcss": "^4.1.14"
+    }
+}
