@@ -1,0 +1,305 @@
+/**
+ * Arconte Landing Page - Sistema de Diseño
+ *
+ * Estilos basados en:
+ * - Análisis de LEXIUS Colombia (lexius.io/co)
+ * - Tendencias de diseño 2025 (glassmorphism, gradientes)
+ * - Paleta de colores validada por GPT Agente
+ *
+ * @author Arconte Team
+ * @date 2025-10-18
+ */
+
+/* ========================================
+   VARIABLES CSS
+   ======================================== */
+
+:root {
+  /* Colores principales - Azul profesional */
+  --primary-blue: #2563eb;
+  --primary-dark: #1e40af;
+  --primary-light: #3b82f6;
+  --primary-lighter: #60a5fa;
+
+  /* Colores de acento - Tech moderno */
+  --accent-purple: #8b5cf6;
+  --accent-cyan: #06b6d4;
+  --accent-emerald: #10b981;
+  --accent-pink: #ec4899;
+
+  /* Gradientes - Hero y fondos */
+  --gradient-hero: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-hero-alt: linear-gradient(135deg, #667eea 0%, #06b6d4 100%);
+  --gradient-glow: linear-gradient(90deg, #667eea 0%, #06b6d4 100%);
+  --gradient-mesh: radial-gradient(at 40% 20%, rgba(102, 126, 234, 0.3) 0%, transparent 50%),
+                   radial-gradient(at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%);
+
+  /* Glassmorphism - Tendencia 2025 */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-bg-dark: rgba(17, 24, 39, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-border-dark: rgba(255, 255, 255, 0.1);
+
+  /* Neutrales - Light mode */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-600: #4b5563;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Sombras - Depth y elevación */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.4);
+}
+
+/* Dark mode variables */
+.dark {
+  --primary-blue: #3b82f6;
+  --primary-dark: #2563eb;
+  --gray-50: #111827;
+  --gray-100: #1f2937;
+  --gray-800: #f3f4f6;
+  --gray-900: #f9fafb;
+}
+
+/* ========================================
+   UTILIDADES GLOBALES
+   ======================================== */
+
+/* Smooth scroll behavior (tendencia 2025) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reset de scroll snap si existe */
+html, body {
+  scroll-snap-type: none;
+}
+
+/* Container principal de landing */
+.landing-container {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .landing-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* ========================================
+   GLASSMORPHISM
+   ======================================== */
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.dark .glass {
+  background: var(--glass-bg-dark);
+  border-color: var(--glass-border-dark);
+}
+
+/* Glass con más blur (para navbar sticky) */
+.glass-heavy {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.dark .glass-heavy {
+  background: rgba(17, 24, 39, 0.9);
+}
+
+/* ========================================
+   GRADIENTES
+   ======================================== */
+
+/* Gradient text (para títulos impactantes) */
+.gradient-text {
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Gradient background animado */
+.gradient-bg-animated {
+  background: var(--gradient-hero);
+  background-size: 200% 200%;
+  animation: gradientShift 10s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Mesh gradient overlay */
+.mesh-gradient {
+  position: relative;
+}
+
+.mesh-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-mesh);
+  pointer-events: none;
+}
+
+/* ========================================
+   HOVER EFFECTS
+   ======================================== */
+
+/* Glow en hover (para cards premium) */
+.hover-glow {
+  transition: all 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+/* Elevación en hover (para feature cards) */
+.hover-lift {
+  transition: all 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+/* Scale en hover (para botones) */
+.hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+/* ========================================
+   BOTONES
+   ======================================== */
+
+/* Botón primario con glow */
+.btn-primary {
+  background: var(--primary-blue);
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
+
+/* Botón outline */
+.btn-outline {
+  border: 2px solid var(--primary-blue);
+  color: var(--primary-blue);
+  background: transparent;
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+/* ========================================
+   ANIMACIONES CUSTOM
+   ======================================== */
+
+/* Float animation (para elementos flotantes) */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Pulse glow (para badges "Más Popular") */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(37, 99, 235, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.6); }
+}
+
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+/* Hide on mobile */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none;
+  }
+}
+
+/* Hide on desktop */
+@media (min-width: 769px) {
+  .hide-desktop {
+    display: none;
+  }
+}
+
+/* ========================================
+   ACCESIBILIDAD
+   ======================================== */
+
+/* Focus visible para teclado */
+*:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* Reduce motion para usuarios con preferencias */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

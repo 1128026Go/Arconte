@@ -7,6 +7,7 @@ import { useAuthCheck } from "./hooks/useAuth.js";
 // Eager load critical pages
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Landing from "./pages/Landing.jsx";
 
 // Lazy load other pages for better performance
 const Register = lazy(() => import("./pages/Register.jsx"));
@@ -246,7 +247,7 @@ export default function App() {
 
           <Route path="/logout" element={<Logout />} />
 
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Landing />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Suspense>
