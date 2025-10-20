@@ -153,9 +153,9 @@ echo.
 
 REM [3/5] Queue Worker
 echo [3/5] ⚙️  Queue Worker...
-start "Arconte - Queue Worker" cmd /k "cd apps\api_php && "%PHP_PATH%" artisan queue:work --tries=3 --timeout=90"
+start "Arconte - Queue Worker" cmd /k "cd apps\api_php && start-queue-worker.bat"
 timeout /t 2 >nul
-echo       ✓ Queue Worker iniciado
+echo       ✓ Queue Worker iniciado (con auto-reinicio)
 
 echo.
 
@@ -222,6 +222,10 @@ echo.
 echo 🔧 Backend API (Laravel):
 echo    └─ http://localhost:8000
 echo    └─ http://localhost:8000/api/health
+echo.
+echo ⚙️  Queue Worker:
+echo    └─ Procesando jobs en background
+echo    └─ Auto-reinicio habilitado
 echo.
 echo 🌐 Frontend (React + Vite):
 echo    └─ http://localhost:3000

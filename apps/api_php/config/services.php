@@ -49,4 +49,11 @@ return [
         'api_key' => env('GEMINI_API_KEY'),
     ],
 
+    'ingest' => [
+        'base_url' => env('INGEST_BASE_URL', 'http://127.0.0.1:8001'),
+        'api_key' => env('INGEST_API_KEY'),
+        'timeout' => env('INGEST_TIMEOUT', 45),
+        'retries' => env('INGEST_RETRIES', 2),
+    ],
+
 ];

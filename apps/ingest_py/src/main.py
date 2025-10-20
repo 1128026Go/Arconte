@@ -89,7 +89,7 @@ async def check_rate_limit(request: Request) -> str:
 
 
 # Middleware de autenticación por API Key
-async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
+async def verify_api_key(x_api_key: str = Header(None, alias="X-API-Key")) -> str:
     """
     Verifica que el header X-API-Key coincida con la clave esperada.
 
