@@ -4,6 +4,30 @@
 
 ---
 
+## 🎭 Demo Mode (FASTEST - 2 minutos)
+
+```bash
+# Windows
+.\scripts\dev\start-demo.bat
+
+# Linux/macOS
+./scripts/dev/start-demo.sh  # (crear si es necesario)
+```
+
+**Incluye:**
+- ✅ Base de datos limpia con migraciones
+- ✅ Usuario admin + demo precargado
+- ✅ 3 casos juríd
+
+icos de ejemplo
+- ✅ Todos los servicios iniciados
+
+**Credenciales:**
+- Admin: `admin@juridica.test` / `admin123`
+- Demo: `demo@juridica.com` / `demo123`
+
+---
+
 ## ⚡ Quick Start (5 minutos)
 
 ```bash
