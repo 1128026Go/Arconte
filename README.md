@@ -1,5 +1,7 @@
 # 🏛️ Arconte - Sistema de Gestión Jurídica con IA
 
+[![CI](https://github.com/1128026Go/Arconte/actions/workflows/ci.yml/badge.svg)](https://github.com/1128026Go/Arconte/actions/workflows/ci.yml)
+
 **Plataforma completa de gestión legal para abogados y bufetes en Colombia**
 
 ## 🚀 Inicio Rápido
