@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { listCases, getNotificationStats } from "../lib/api";
 import MainLayout from "../components/Layout/MainLayout";
 import { Link } from "react-router-dom";
@@ -10,6 +11,8 @@ import { BarChart3, FileText, ArrowRight } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { staggerContainer, staggerItem, fadeInUp } from "../utils/animations";
+import ChatBot from "../components/ChatBot";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({ unread: 0, high_priority: 0, today: 0 });
@@ -37,13 +40,14 @@ export default function Dashboard() {
       setLoading(false);
     }
   }
+
   if (loading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-navy-900 mb-4"></div>
-            <p className="text-slate-600">Cargando dashboard...</p>
+            <div className="loading-spinner mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando dashboard...</p>
           </div>
         </div>
       </MainLayout>
@@ -77,122 +81,147 @@ export default function Dashboard() {
   return (
     <MainLayout>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-navy-900 mb-2">Dashboard</h1>
-        <p className="text-slate-600">Resumen de actividad y metricas principales</p>
-      </div>
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+        className="mb-8"
+      >
+        <h1 className="text-3xl font-bold text-primary-900 mb-2">Dashboard</h1>
+        <p className="text-primary-600">Resumen de actividad y métricas principales</p>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+      >
         {/* Card 1 - Total Casos */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition-shadow">
+        <motion.div variants={staggerItem} className="stat-card">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600 mb-1">Total Casos</p>
-              <h3 className="text-3xl font-bold text-navy-900">{cases.length}</h3>
-              <div className="flex items-center gap-1 mt-2 text-sm font-medium text-green-600">
-                <TrendingUp className="w-4 h-4" />
-                <span>12%</span>
-                <span className="text-slate-500">vs mes anterior</span>
+              <p className="stat-label">Total Casos</p>
+              <h3 className="stat-value">{cases.length}</h3>
+              <div className="stat-trend up mt-2">
+                <TrendingUp className="w-4 h-4 mr-1" />
+                <span>12% vs mes anterior</span>
               </div>
             </div>
-            <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Folder className="w-6 h-6 text-blue-600" />
+            <div className="stat-icon bg-primary-50">
+              <Folder className="w-6 h-6 text-primary-600" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 2 - Notificaciones */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition-shadow">
+        <motion.div variants={staggerItem} className="stat-card">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600 mb-1">Notificaciones</p>
-              <h3 className="text-3xl font-bold text-navy-900">{stats?.unread || 0}</h3>
-              <p className="text-sm text-slate-500 mt-2">No leidas</p>
+              <p className="stat-label">Notificaciones</p>
+              <h3 className="stat-value">{stats?.unread || 0}</h3>
+              <p className="stat-label mt-2">No leídas</p>
             </div>
-            <div className="w-12 h-12 rounded-lg bg-yellow-50 flex items-center justify-center">
-              <Bell className="w-6 h-6 text-yellow-600" />
+            <div className="stat-icon bg-warning-light/10">
+              <Bell className="w-6 h-6 text-warning" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 3 - Alta Prioridad */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition-shadow">
+        <motion.div variants={staggerItem} className="stat-card">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600 mb-1">Alta Prioridad</p>
-              <h3 className="text-3xl font-bold text-navy-900">{stats?.high_priority || 0}</h3>
-              <p className="text-sm text-slate-500 mt-2">Requieren atencion</p>
+              <p className="stat-label">Alta Prioridad</p>
+              <h3 className="stat-value">{stats?.high_priority || 0}</h3>
+              <p className="stat-label mt-2">Requieren atención</p>
             </div>
-            <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-orange-600" />
+            <div className="stat-icon bg-warning/10">
+              <AlertTriangle className="w-6 h-6 text-warning-dark" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 4 - Hoy */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition-shadow">
+        <motion.div variants={staggerItem} className="stat-card">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600 mb-1">Hoy</p>
-              <h3 className="text-3xl font-bold text-navy-900">{stats?.today || 0}</h3>
-              <p className="text-sm text-slate-500 mt-2">Actualizaciones</p>
+              <p className="stat-label">Hoy</p>
+              <h3 className="stat-value">{stats?.today || 0}</h3>
+              <p className="stat-label mt-2">Actualizaciones</p>
             </div>
-            <div className="w-12 h-12 rounded-lg bg-purple-50 flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-purple-600" />
+            <div className="stat-icon bg-primary-100">
+              <Calendar className="w-6 h-6 text-primary-700" />
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Subscription Promo Banner */}
-      <Link to="/subscription" className="block mb-8">
-        <div className="relative overflow-hidden bg-gradient-to-r from-gold-500 via-gold-600 to-navy-800 rounded-xl p-8 hover:shadow-2xl transition-all duration-300 group">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{
-              backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)',
-              backgroundSize: '30px 30px'
-            }}></div>
-          </div>
-
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4 flex-1">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0">
-                <Crown className="w-8 h-8 text-white" />
-              </div>
-              <div className="text-white">
-                <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                  Potencia tu práctica legal
-                  <Zap className="w-6 h-6 text-yellow-300" />
-                </h3>
-                <p className="text-white/90 text-lg">
-                  Desbloquea casos ilimitados, IA legal avanzada y más con nuestros planes profesionales
-                </p>
-              </div>
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+        className="mb-8"
+      >
+        <Link to="/subscription" className="block">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+            className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-primary-800 rounded-xl p-8 shadow-lg group"
+          >
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute inset-0" style={{
+                backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)',
+                backgroundSize: '30px 30px'
+              }}></div>
             </div>
 
-            <div className="flex-shrink-0">
-              <div className="bg-white text-navy-900 px-8 py-4 rounded-lg font-bold text-lg shadow-xl group-hover:scale-105 transition-transform flex items-center gap-2">
-                Ver Planes
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0">
+                  <Crown className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-white">
+                  <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                    Potencia tu práctica legal
+                    <Zap className="w-6 h-6 text-yellow-300" />
+                  </h3>
+                  <p className="text-white/90 text-lg">
+                    Desbloquea casos ilimitados, IA legal avanzada y más con nuestros planes profesionales
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex-shrink-0">
+                <div className="bg-white text-primary-800 px-8 py-4 rounded-lg font-bold text-lg shadow-md group-hover:scale-105 transition-transform flex items-center gap-2">
+                  Ver Planes
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </Link>
+          </motion.div>
+        </Link>
+      </motion.div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
+      >
         {/* Activity Chart */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6">
+        <motion.div variants={staggerItem} className="card-glass card-bordered">
           <div className="flex items-center mb-6">
-            <TrendingUp className="w-5 h-5 text-gold-500 mr-2" />
-            <h3 className="text-lg font-semibold text-navy-900">
+            <TrendingUp className="w-5 h-5 text-primary-600 mr-2" />
+            <h3 className="text-lg font-semibold text-primary-900">
               Actividad de Casos
             </h3>
           </div>
-          <p className="text-sm text-slate-600 mb-4">Ultimos 7 dias</p>
+          <p className="text-sm text-primary-600 mb-4">Últimos 7 días</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={generateActivityData()}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -216,24 +245,24 @@ export default function Dashboard() {
               <Line
                 type="monotone"
                 dataKey="casos"
-                stroke="#334155"
-                strokeWidth={2}
-                dot={{ fill: '#d4af37', r: 4 }}
-                activeDot={{ r: 6 }}
+                stroke="#475569"
+                strokeWidth={3}
+                dot={{ fill: '#64748b', r: 5 }}
+                activeDot={{ r: 7 }}
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </motion.div>
 
         {/* Status Distribution Chart */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6">
+        <motion.div variants={staggerItem} className="card-glass card-bordered">
           <div className="flex items-center mb-6">
-            <BarChart3 className="w-5 h-5 text-gold-500 mr-2" />
-            <h3 className="text-lg font-semibold text-navy-900">
-              Distribucion por Estado
+            <BarChart3 className="w-5 h-5 text-primary-600 mr-2" />
+            <h3 className="text-lg font-semibold text-primary-900">
+              Distribución por Estado
             </h3>
           </div>
-          <p className="text-sm text-slate-600 mb-4">Estado actual de casos</p>
+          <p className="text-sm text-primary-600 mb-4">Estado actual de casos</p>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
@@ -260,18 +289,23 @@ export default function Dashboard() {
               />
             </PieChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Recent Cases */}
-      <div className="bg-white border border-slate-200 rounded-lg p-6">
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+        className="card-glass card-bordered"
+      >
         <div className="flex items-center mb-6">
-          <FileText className="w-5 h-5 text-gold-500 mr-2" />
-          <h2 className="text-xl font-semibold text-navy-900">
+          <FileText className="w-5 h-5 text-primary-600 mr-2" />
+          <h2 className="text-xl font-semibold text-primary-900">
             Casos Recientes
           </h2>
         </div>
-        <div className="divide-y divide-slate-200">
+        <div className="divide-y divide-gray-200">
           {cases.slice(0, 5).map(c => (
             <CaseRow key={c.id} case={c} />
           ))}
@@ -280,20 +314,23 @@ export default function Dashboard() {
           <div className="mt-6 text-center">
             <a
               href="/cases"
-              className="inline-flex items-center text-navy-700 hover:text-gold-500 font-medium text-sm transition-colors"
+              className="inline-flex items-center text-primary-600 hover:text-primary-800 font-medium text-sm transition-colors"
             >
               Ver todos los casos
               <ArrowRight className="w-4 h-4 ml-1" />
             </a>
           </div>
         )}
-      </div>
+      </motion.div>
+
+      {/* Chatbot flotante */}
+      <ChatBot />
     </MainLayout>
   );
 }
 
-// Colores para grafico de pie - Paleta navy/gold
-const COLORS = ['#334155', '#d4af37', '#64748b', '#dc2626', '#475569', '#f59e0b'];
+// Colores para grafico de pie - Paleta sobria
+const COLORS = ['#475569', '#64748b', '#94a3b8', '#78716c', '#57534e', '#a8a29e'];
 
 // Label personalizado para el grafico de pie
 const renderCustomLabel = ({ name, percent }) => {
@@ -302,30 +339,24 @@ const renderCustomLabel = ({ name, percent }) => {
 
 function CaseRow({ case: c }) {
   return (
-    <div className="py-4 flex items-center justify-between hover:bg-slate-50 transition-colors px-2 -mx-2 rounded">
+    <motion.div
+      whileHover={{ scale: 1.01, backgroundColor: 'rgba(71, 85, 105, 0.05)' }}
+      className="py-4 flex items-center justify-between px-2 -mx-2 rounded transition-colors"
+    >
       <div className="flex-1">
-        <div className="font-semibold text-navy-900 mb-1">
+        <div className="font-semibold text-primary-900 mb-1">
           {c.radicado}
         </div>
-        <div className="text-sm text-slate-600">
+        <div className="text-sm text-primary-600">
           {c.tipo_proceso || "Sin tipo"} - {c.despacho || "Sin despacho"}
         </div>
       </div>
       <a
         href={`/cases/${c.id}`}
-        className="px-4 py-2 bg-slate-100 hover:bg-navy-50 text-navy-700 rounded-md text-sm font-medium transition-colors"
+        className="px-4 py-2 bg-primary-600/10 hover:bg-primary-600 hover:text-white text-primary-700 rounded-lg text-sm font-medium transition-all"
       >
         Ver detalles
       </a>
-    </div>
+    </motion.div>
   );
 }
-
-
-
-
-
-
-
-
-

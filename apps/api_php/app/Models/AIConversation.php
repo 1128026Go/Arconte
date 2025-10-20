@@ -27,7 +27,7 @@ class AIConversation extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function case(): BelongsTo
+    public function caseModel(): BelongsTo
     {
         return $this->belongsTo(CaseModel::class, 'case_id');
     }

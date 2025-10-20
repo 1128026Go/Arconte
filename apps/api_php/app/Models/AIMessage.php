@@ -13,7 +13,14 @@ class AIMessage extends Model
         'conversation_id',
         'role',
         'content',
+        'metadata',
         'tokens',
+    ];
+
+    protected $casts = [
+        'metadata' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function conversation(): BelongsTo

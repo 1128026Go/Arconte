@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lawyer;
+use App\Models\LawyerHire;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -325,5 +326,47 @@ class LawyerController extends Controller
         ];
 
         return response()->json($cities);
+    }
+
+    /**
+     * Hire a lawyer
+     */
+    public function hire(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'lawyer_id' => 'required|exists:lawyers,id',
+            'case_description' => 'required|string|min:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Check if lawyer is available
+        $lawyer = Lawyer::findOrFail($request->lawyer_id);
+
+        if (!$lawyer->available) {
+            return response()->json([
+                'error' => 'Este abogado no está disponible actualmente'
+            ], 400);
+        }
+
+        // Create hire request
+        $hire = LawyerHire::create([
+            'user_id' => auth()->id(),
+            'lawyer_id' => $request->lawyer_id,
+            'case_description' => $request->case_description,
+            'status' => 'pending',
+        ]);
+
+        // TODO: Send email notification to lawyer
+
+        return response()->json([
+            'message' => 'Solicitud enviada exitosamente. El abogado se pondrá en contacto contigo pronto.',
+            'hire' => $hire
+        ], 201);
     }
 }

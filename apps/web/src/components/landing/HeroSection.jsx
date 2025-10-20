@@ -29,14 +29,13 @@ export default function HeroSection() {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pt-20">
-      {/* Mesh Gradient Background */}
-      <div className="absolute inset-0 mesh-gradient opacity-60"></div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 via-slate-50 to-stone-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 pt-20">
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/30 to-white/50 dark:from-transparent dark:via-gray-900/30 dark:to-gray-900/50"></div>
 
-      {/* Animated blobs */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-      <div className="absolute top-40 right-10 w-72 h-72 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-      <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+      {/* Minimal animated elements */}
+      <div className="absolute top-20 left-10 w-96 h-96 bg-primary-200/20 dark:bg-primary-800/10 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob"></div>
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent-200/20 dark:bg-accent-800/10 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
 
       <div className="landing-container relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -50,10 +49,10 @@ export default function HeroSection() {
             {/* Badge */}
             <motion.div
               variants={staggerItem}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg mb-6"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-primary-200 dark:border-primary-700 rounded-full shadow-sm mb-6"
             >
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <span className="w-2 h-2 bg-success rounded-full animate-pulse"></span>
+              <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
                 Potenciado por Google Gemini AI
               </span>
             </motion.div>
@@ -63,7 +62,7 @@ export default function HeroSection() {
               variants={staggerItem}
               className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
             >
-              <span className="text-gray-900 dark:text-white">
+              <span className="text-primary-900 dark:text-white">
                 Tu Asistente
               </span>
               <br />
@@ -80,7 +79,7 @@ export default function HeroSection() {
                 ]}
                 wrapper="span"
                 speed={50}
-                className="gradient-text"
+                className="text-primary-600 dark:text-primary-400"
                 repeat={Infinity}
               />
             </motion.h1>
@@ -88,7 +87,7 @@ export default function HeroSection() {
             {/* Subtitle */}
             <motion.p
               variants={staggerItem}
-              className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto lg:mx-0"
+              className="text-xl md:text-2xl text-primary-600 dark:text-primary-400 mb-8 max-w-2xl mx-auto lg:mx-0"
             >
               Gestiona tus casos, automatiza documentos y accede a jurisprudencia colombiana con inteligencia artificial.
             </motion.p>
@@ -99,8 +98,8 @@ export default function HeroSection() {
               className="space-y-3 mb-8"
             >
               {benefits.map((benefit, index) => (
-                <div key={index} className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
-                  <div className="flex-shrink-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <div key={index} className="flex items-center gap-3 text-primary-700 dark:text-primary-300">
+                  <div className="flex-shrink-0 w-6 h-6 bg-success rounded-full flex items-center justify-center">
                     <Check className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-lg">{benefit}</span>
@@ -141,23 +140,23 @@ export default function HeroSection() {
             {/* Trust Signals */}
             <motion.div
               variants={staggerItem}
-              className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700"
+              className="mt-12 pt-8 border-t border-primary-200 dark:border-primary-700"
             >
-              <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
+              <p className="text-sm text-primary-500 dark:text-primary-400 mb-4">
                 Confiado por abogados en Colombia
               </p>
               <div className="flex items-center justify-center lg:justify-start gap-8">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">500+</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Usuarios</div>
+                  <div className="text-3xl font-bold text-primary-700 dark:text-primary-400">500+</div>
+                  <div className="text-sm text-primary-600 dark:text-primary-500">Usuarios</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">10K+</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Casos</div>
+                  <div className="text-3xl font-bold text-primary-700 dark:text-primary-400">10K+</div>
+                  <div className="text-sm text-primary-600 dark:text-primary-500">Casos</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">98%</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Satisfacción</div>
+                  <div className="text-3xl font-bold text-primary-700 dark:text-primary-400">98%</div>
+                  <div className="text-sm text-primary-600 dark:text-primary-500">Satisfacción</div>
                 </div>
               </div>
             </motion.div>

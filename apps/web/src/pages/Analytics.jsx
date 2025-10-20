@@ -1,10 +1,12 @@
 ﻿import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { analytics } from '../lib/api';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import MainLayout from '../components/Layout/MainLayout';
 import { BarChart3, TrendingUp, TrendingDown, Users, FileText, DollarSign, Clock, Calendar } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { staggerContainer, staggerItem, fadeInUp } from '../utils/animations';
 
 export default function Analytics() {
   const [loading, setLoading] = useState(false);
@@ -80,16 +82,21 @@ export default function Analytics() {
     <MainLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <motion.div
+          variants={fadeInUp}
+          initial="hidden"
+          animate="visible"
+          className="flex items-center justify-between"
+        >
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
             <p className="text-gray-600">Métricas y estadísticas del sistema</p>
           </div>
-          <Button onClick={loadAnalytics} className="flex items-center gap-2">
+          <Button onClick={loadAnalytics} className="flex items-center gap-2 btn-dashboard btn-dashboard-primary">
             <BarChart3 className="h-4 w-4" />
             Refrescar Datos
           </Button>
-        </div>
+        </motion.div>
 
         {error && (
           <Card className="border-red-200 bg-red-50">
@@ -98,12 +105,18 @@ export default function Analytics() {
         )}
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 gap-4 md:grid-cols-4"
+        >
           {mockKpis.map((kpi, idx) => {
             const Icon = kpi.icon;
             const isPositive = kpi.delta >= 0;
             return (
-              <Card key={idx}>
+              <motion.div key={idx} variants={staggerItem}>
+              <Card className="stat-card">
                 <div className="flex items-center gap-3">
                   <div className={`rounded-lg p-2 bg-${kpi.color}-100`}>
                     <Icon className={`h-5 w-5 text-${kpi.color}-600`} />
@@ -127,14 +140,21 @@ export default function Analytics() {
                   </div>
                 </div>
               </Card>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 gap-6 lg:grid-cols-2"
+        >
           {/* Cases Chart */}
-          <Card>
+          <motion.div variants={staggerItem}>
+          <Card className="card-glass card-bordered">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Casos por Mes</h3>
               <Calendar className="h-5 w-5 text-gray-400" />
@@ -152,9 +172,11 @@ export default function Analytics() {
               </ResponsiveContainer>
             </div>
           </Card>
+          </motion.div>
 
           {/* Time Chart */}
-          <Card>
+          <motion.div variants={staggerItem}>
+          <Card className="card-glass card-bordered">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Horas por Día</h3>
               <Clock className="h-5 w-5 text-gray-400" />
@@ -177,9 +199,11 @@ export default function Analytics() {
               </ResponsiveContainer>
             </div>
           </Card>
+          </motion.div>
 
           {/* Document Types */}
-          <Card>
+          <motion.div variants={staggerItem}>
+          <Card className="card-glass card-bordered">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Tipos de Documentos</h3>
               <FileText className="h-5 w-5 text-gray-400" />
@@ -206,9 +230,11 @@ export default function Analytics() {
               </ResponsiveContainer>
             </div>
           </Card>
+          </motion.div>
 
           {/* Summary Stats */}
-          <Card>
+          <motion.div variants={staggerItem}>
+          <Card className="card-glass card-bordered">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Resumen Mensual</h3>
               <BarChart3 className="h-5 w-5 text-gray-400" />
@@ -260,7 +286,8 @@ export default function Analytics() {
               </div>
             </div>
           </Card>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Loading State */}
         {loading && (

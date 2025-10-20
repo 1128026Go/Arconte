@@ -6,8 +6,10 @@ import MainLayout from '../components/Layout/MainLayout';
 import CaseAttachments from '../components/CaseAttachments';
 import CaseHeaderCards from '../components/cases/CaseHeaderCards';
 import ActsListCompact from '../components/cases/ActsListCompact';
+import ChatBot from '../components/ChatBot';
+import AudioTranscriber from '../components/AudioTranscriber';
 import {
-  Calendar, User, FileText, Scale, AlertCircle, RefreshCw
+  Calendar, User, FileText, Scale, AlertCircle, RefreshCw, Mic
 } from 'lucide-react';
 
 export default function CaseDetail() {
@@ -214,6 +216,20 @@ export default function CaseDetail() {
 
       {/* Archivos Adjuntos */}
       <CaseAttachments caseId={id} />
+
+      {/* Transcripciones de Audio/Video */}
+      <div className="mt-6">
+        <div className="bg-navy-50 border border-slate-200 rounded-lg px-6 py-4 mb-4">
+          <h2 className="text-lg font-semibold text-navy-900 flex items-center">
+            <Mic className="w-5 h-5 mr-2 text-gold-500" />
+            Transcripciones de Audio/Video
+          </h2>
+        </div>
+        <AudioTranscriber caseId={id} />
+      </div>
+
+      {/* Chatbot con contexto del caso */}
+      <ChatBot caseId={id} />
     </MainLayout>
   );
 }

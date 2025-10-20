@@ -3,20 +3,25 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     ActDocumentController,
+    AIAssistantController,
     AIController,
     AnalyticsController,
     AttachmentController,
     AuthController,
+    BetaSignupController,
     BillingController,
     CaseController,
     DiagnosticsController,
     DocumentController,
+    DocumentGenerationController,
     JurisprudenceController,
     LawyerController,
     NotificationController,
     ReminderController,
+    SemanticSearchController,
     SubscriptionController,
     TimeTrackingController,
+    TranscriptionController,
     UserController,
     WebhookController,
 };
@@ -130,6 +135,9 @@ if (app()->environment('local', 'development', 'testing')) {
         Route::post('/test-rama-judicial', [DiagnosticsController::class, 'testRamaJudicial']);
     });
 }
+
+// Beta Signups (public)
+Route::post('/beta-signup', [BetaSignupController::class, 'store']);
 
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -265,7 +273,50 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/analytics/timeline', [AnalyticsController::class, 'getTimeline']);
     Route::get('/analytics/cases-by-type', [AnalyticsController::class, 'getCasesByType']);
 
-    // AI Assistant
+    // AI Assistant - Chatbot conversacional
+    Route::prefix('ai-assistant')->group(function () {
+        Route::post('/chat', [AIAssistantController::class, 'chat']);
+        Route::get('/conversations', [AIAssistantController::class, 'getConversations']);
+        Route::get('/conversations/{id}/messages', [AIAssistantController::class, 'getMessages']);
+        Route::delete('/conversations/{id}', [AIAssistantController::class, 'deleteConversation']);
+        Route::put('/conversations/{id}/title', [AIAssistantController::class, 'updateTitle']);
+    });
+
+    // AI Document Generation
+    Route::prefix('document-generation')->group(function () {
+        Route::post('/generate', [DocumentGenerationController::class, 'generate']);
+        Route::get('/documents', [DocumentGenerationController::class, 'index']);
+        Route::get('/documents/{id}', [DocumentGenerationController::class, 'show']);
+        Route::put('/documents/{id}', [DocumentGenerationController::class, 'update']);
+        Route::delete('/documents/{id}', [DocumentGenerationController::class, 'destroy']);
+        Route::post('/documents/{id}/export', [DocumentGenerationController::class, 'export']);
+        Route::get('/templates', [DocumentGenerationController::class, 'listTemplates']);
+        Route::post('/templates', [DocumentGenerationController::class, 'createTemplate']);
+    });
+
+    // AI Transcription - Audio/Video transcription
+    Route::prefix('transcriptions')->group(function () {
+        Route::post('/upload', [TranscriptionController::class, 'upload']);
+        Route::get('/', [TranscriptionController::class, 'index']);
+        Route::get('/stats', [TranscriptionController::class, 'stats']);
+        Route::get('/{id}', [TranscriptionController::class, 'show']);
+        Route::put('/{id}', [TranscriptionController::class, 'update']);
+        Route::delete('/{id}', [TranscriptionController::class, 'destroy']);
+        Route::post('/{id}/retry', [TranscriptionController::class, 'retry']);
+        Route::get('/{id}/export', [TranscriptionController::class, 'export']);
+    });
+
+    // Semantic Search & RAG
+    Route::prefix('semantic-search')->group(function () {
+        Route::post('/search', [SemanticSearchController::class, 'search']);
+        Route::post('/rag-query', [SemanticSearchController::class, 'ragQuery']);
+        Route::get('/similar/{embeddingId}', [SemanticSearchController::class, 'findSimilar']);
+        Route::post('/embed', [SemanticSearchController::class, 'embedDocument']);
+        Route::post('/embed-all', [SemanticSearchController::class, 'embedAll']);
+        Route::get('/stats', [SemanticSearchController::class, 'stats']);
+    });
+
+    // AI Legacy (document generation, etc)
     Route::post('/ai/chat', [AIController::class, 'chat']);
     Route::get('/ai/conversations', [AIController::class, 'listConversations']);
     Route::get('/ai/conversations/{id}', [AIController::class, 'getConversation']);
@@ -294,9 +345,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/search', [LawyerController::class, 'search']);
         Route::get('/specialties', [LawyerController::class, 'specialties']);
         Route::get('/cities', [LawyerController::class, 'cities']);
+        Route::post('/hire', [LawyerController::class, 'hire']);
         Route::get('/{id}', [LawyerController::class, 'show']);
         Route::put('/{id}', [LawyerController::class, 'update']);
         Route::delete('/{id}', [LawyerController::class, 'destroy']);
+    });
+
+    // Beta Signups (admin only)
+    Route::prefix('beta-signups')->group(function () {
+        Route::get('/', [BetaSignupController::class, 'index']);
+        Route::put('/{id}/status', [BetaSignupController::class, 'updateStatus']);
     });
 });
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { listCases, createCase, markRead, cases } from "../lib/api";
 import { fmtDate } from "../lib/date";
@@ -7,6 +8,7 @@ import MainLayout from '../components/Layout/MainLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Search, Filter, Plus, FileText, MapPin, Calendar, TrendingUp, X, Trash2, AlertTriangle } from 'lucide-react';
+import { staggerContainer, staggerItem, fadeInUp } from "../utils/animations";
 
 export default function CasesPage() {
   const [items, setItems] = useState([]);
@@ -165,13 +167,23 @@ export default function CasesPage() {
   return (
     <MainLayout>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-navy-900 mb-2">Mis Procesos</h1>
-        <p className="text-slate-600">Gestiona y consulta todos tus casos judiciales</p>
-      </div>
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+        className="mb-6"
+      >
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Mis Procesos</h1>
+        <p className="text-gray-600">Gestiona y consulta todos tus casos judiciales</p>
+      </motion.div>
 
       {/* Formulario agregar caso */}
-      <Card className="mb-6 p-6">
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+      >
+      <Card className="mb-6 p-6 card-glass">
         <h2 className="text-lg font-semibold text-navy-900 mb-4">Agregar Nuevo Caso</h2>
         <form onSubmit={addCase} className="flex gap-3">
           <div className="flex-1">
@@ -200,9 +212,10 @@ export default function CasesPage() {
           </div>
         )}
       </Card>
+      </motion.div>
 
       {/* Barra de búsqueda y filtros */}
-      <Card className="mb-6 p-4">
+      <Card className="mb-6 p-4 card-glass">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Búsqueda */}
           <div className="flex-1 relative">
@@ -342,7 +355,7 @@ export default function CasesPage() {
 
       {/* Lista de casos */}
       {filteredCases.length === 0 ? (
-        <Card className="p-12 text-center">
+        <Card className="p-12 text-center empty-state card-glass">
           <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
           <h3 className="text-lg font-semibold text-slate-700 mb-2">
             {items.length === 0 ? 'No tienes casos registrados' : 'No se encontraron casos'}
@@ -368,9 +381,15 @@ export default function CasesPage() {
           )}
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid gap-4"
+        >
           {filteredCases.map(c => (
-            <Card key={c.id} className="p-5 hover:shadow-lg transition-shadow duration-200">
+            <motion.div key={c.id} variants={staggerItem}>
+            <Card className="p-5 card-glass hover:scale-[1.01] transition-transform duration-200">
               {/* Header del caso */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -503,14 +522,26 @@ export default function CasesPage() {
                 </Button>
               </div>
             </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Modal de confirmación de eliminación */}
+      <AnimatePresence>
       {deleteModal.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-md w-full p-6">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+          <Card className="max-w-md w-full p-6 glass">
             <div className="flex items-start gap-4 mb-6">
               <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
@@ -554,8 +585,10 @@ export default function CasesPage() {
               </Button>
             </div>
           </Card>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </MainLayout>
   );
 }

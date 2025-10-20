@@ -15,24 +15,24 @@
    ======================================== */
 
 :root {
-  /* Colores principales - Azul profesional */
-  --primary-blue: #2563eb;
-  --primary-dark: #1e40af;
-  --primary-light: #3b82f6;
-  --primary-lighter: #60a5fa;
+  /* Colores principales - Escala de grises profesional */
+  --primary-blue: #475569;
+  --primary-dark: #334155;
+  --primary-light: #64748b;
+  --primary-lighter: #94a3b8;
 
-  /* Colores de acento - Tech moderno */
-  --accent-purple: #8b5cf6;
-  --accent-cyan: #06b6d4;
-  --accent-emerald: #10b981;
-  --accent-pink: #ec4899;
+  /* Colores de acento - Tonos sutiles */
+  --accent-stone: #78716c;
+  --accent-slate: #64748b;
+  --accent-emerald: #059669;
+  --accent-amber: #d97706;
 
-  /* Gradientes - Hero y fondos */
-  --gradient-hero: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-hero-alt: linear-gradient(135deg, #667eea 0%, #06b6d4 100%);
-  --gradient-glow: linear-gradient(90deg, #667eea 0%, #06b6d4 100%);
-  --gradient-mesh: radial-gradient(at 40% 20%, rgba(102, 126, 234, 0.3) 0%, transparent 50%),
-                   radial-gradient(at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%);
+  /* Gradientes - Sutiles y profesionales */
+  --gradient-hero: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  --gradient-hero-alt: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+  --gradient-glow: linear-gradient(90deg, #64748b 0%, #475569 100%);
+  --gradient-mesh: radial-gradient(at 40% 20%, rgba(100, 116, 139, 0.15) 0%, transparent 50%),
+                   radial-gradient(at 80% 80%, rgba(71, 85, 105, 0.15) 0%, transparent 50%);
 
   /* Glassmorphism - Tendencia 2025 */
   --glass-bg: rgba(255, 255, 255, 0.1);
@@ -49,19 +49,19 @@
   --gray-800: #1f2937;
   --gray-900: #111827;
 
-  /* Sombras - Depth y elevación */
+  /* Sombras - Depth y elevación sutiles */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 15px rgba(71, 85, 105, 0.2);
 }
 
 /* Dark mode variables */
 .dark {
-  --primary-blue: #3b82f6;
-  --primary-dark: #2563eb;
+  --primary-blue: #94a3b8;
+  --primary-dark: #64748b;
   --gray-50: #111827;
   --gray-100: #1f2937;
   --gray-800: #f3f4f6;
@@ -257,8 +257,8 @@ html, body {
 
 /* Pulse glow (para badges "Más Popular") */
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 10px rgba(37, 99, 235, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.6); }
+  0%, 100% { box-shadow: 0 0 10px rgba(71, 85, 105, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(71, 85, 105, 0.4); }
 }
 
 .pulse-glow {
@@ -289,7 +289,7 @@ html, body {
 
 /* Focus visible para teclado */
 *:focus-visible {
-  outline: 2px solid var(--primary-blue);
+  outline: 2px solid var(--accent-slate);
   outline-offset: 2px;
 }
 

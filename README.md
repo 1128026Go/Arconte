@@ -35,7 +35,8 @@ cd apps/ingest_py && python run_persistent.py
 
 ### 🎯 Progreso de Implementación
 
-- **✅ [FASE_1_COMPLETADA.md](FASE_1_COMPLETADA.md)** - Configuración de producción (2025-10-19)
+- **✅ [FASE_0_COMPLETADA.md](FASE_0_COMPLETADA.md)** - Correcciones críticas (2025-10-19)
+- **⏳ FASE 1: Developer Experience** - Pendiente
 - **⏳ [FASE_2_PROGRESO.md](FASE_2_PROGRESO.md)** - Generación de documentos IA (En progreso)
 - **📋 [FASES_3_Y_4_PENDIENTES.md](FASES_3_Y_4_PENDIENTES.md)** - Roadmap pendiente
 

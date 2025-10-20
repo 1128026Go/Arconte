@@ -8,6 +8,7 @@ import { useAuthCheck } from "./hooks/useAuth.js";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Landing from "./pages/Landing.jsx";
+import BetaTesters from "./pages/BetaTesters.jsx";
 
 // Lazy load other pages for better performance
 const Register = lazy(() => import("./pages/Register.jsx"));
@@ -16,6 +17,7 @@ const Cases = lazy(() => import("./pages/Cases.jsx"));
 const CaseDetail = lazy(() => import("./pages/CaseDetail.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
 const Documents = lazy(() => import("./pages/Documents.jsx"));
+const DocumentGeneration = lazy(() => import("./pages/DocumentGeneration.jsx"));
 const Reminders = lazy(() => import("./pages/Reminders.jsx"));
 const TimeTracking = lazy(() => import("./pages/TimeTracking.jsx"));
 const Billing = lazy(() => import("./pages/Billing.jsx"));
@@ -30,6 +32,9 @@ const Pricing = lazy(() => import("./pages/Pricing.jsx"));
 const CheckoutResponse = lazy(() => import("./pages/CheckoutResponse.jsx"));
 const CheckoutSimulation = lazy(() => import("./pages/CheckoutSimulation.jsx"));
 const FloatingAI = lazy(() => import("./components/AIAssistant/FloatingAI.jsx"));
+const MarketingDashboard = lazy(() => import("./pages/MarketingDashboard.jsx"));
+const Transcriptions = lazy(() => import("./pages/Transcriptions.jsx"));
+const SearchResults = lazy(() => import("./pages/SearchResults.jsx"));
 
 // Loading component
 const PageLoader = () => (
@@ -83,6 +88,9 @@ export default function App() {
             }
           />
 
+          <Route path="/beta" element={<BetaTesters />} />
+          <Route path="/pricing" element={<Pricing />} />
+
           <Route
             path="/dashboard"
             element={
@@ -124,6 +132,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Documents />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/document-generation"
+            element={
+              <ProtectedRoute>
+                <DocumentGeneration />
               </ProtectedRoute>
             }
           />
@@ -174,10 +191,37 @@ export default function App() {
           />
 
           <Route
+            path="/marketing"
+            element={
+              <ProtectedRoute>
+                <MarketingDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/ai-assistant"
             element={
               <ProtectedRoute>
                 <AIAssistant />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/transcriptions"
+            element={
+              <ProtectedRoute>
+                <Transcriptions />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <SearchResults />
               </ProtectedRoute>
             }
           />

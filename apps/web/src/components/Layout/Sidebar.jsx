@@ -1,5 +1,6 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   Briefcase,
@@ -14,8 +15,11 @@ import {
   LogOut,
   Bot,
   ShoppingBag,
-  GraduationCap
+  GraduationCap,
+  TrendingUp,
+  Search
 } from 'lucide-react';
+import { staggerContainer, staggerItem } from '../../utils/animations';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const location = useLocation();
@@ -25,12 +29,14 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { icon: Briefcase, label: 'Casos', path: '/cases' },
     { icon: FileText, label: 'Documentos', path: '/documents' },
     { icon: Bot, label: 'IA Assistant', path: '/ai-assistant' },
+    { icon: Search, label: 'Búsqueda IA', path: '/search' },
     { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
     { icon: CheckCircle2, label: 'Recordatorios', path: '/reminders' },
     { icon: Clock, label: 'Tiempo', path: '/time-tracking' },
     { icon: DollarSign, label: 'Facturación', path: '/billing' },
     { icon: BookOpen, label: 'Jurisprudencia', path: '/jurisprudence' },
     { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+    { icon: TrendingUp, label: 'Marketing', path: '/marketing' },
     { icon: GraduationCap, label: 'Tutorial', path: '/tutorial' }
   ];
 
@@ -47,59 +53,67 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
       <aside
         className={`
-          fixed top-0 left-0 z-50 h-screen
-          w-64 bg-navy-900
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          sidebar
+          ${isOpen ? 'open' : ''}
           lg:translate-x-0
           flex flex-col
         `}
       >
-        <div className="flex items-center h-16 px-6 border-b border-navy-800">
-          <Scale className="w-8 h-8 text-gold-500 mr-3" />
+        {/* Logo Header */}
+        <div className="flex items-center h-16 px-6 border-b border-white/10">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-blue to-accent-purple flex items-center justify-center mr-3">
+            <Scale className="w-6 h-6 text-white" />
+          </div>
           <div>
-            <h1 className="text-xl font-bold text-white">
+            <h1 className="text-xl font-bold text-white gradient-text">
               Arconte
             </h1>
-            <p className="text-xs text-slate-400">Asistente jurídico</p>
+            <p className="text-xs text-gray-400">Asistente jurídico</p>
           </div>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
-          <ul className="space-y-1">
+          <motion.ul
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="space-y-1"
+          >
             {menuItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
 
               return (
-                <li key={item.path}>
+                <motion.li key={item.path} variants={staggerItem}>
                   <Link
                     to={item.path}
-                    className={`
-                      flex items-center px-4 py-3 rounded-lg
-                      text-sm font-medium transition-all duration-200
-                      ${active
-                        ? 'bg-navy-800 text-white border-l-4 border-gold-500'
-                        : 'text-slate-400 hover:bg-navy-800/50 hover:text-white'
-                      }
-                    `}
+                    className={`sidebar-link ${active ? 'active' : ''}`}
                   >
-                    <Icon className={`w-5 h-5 mr-3 ${active ? 'text-gold-500' : ''}`} />
-                    {item.label}
+                    <Icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                    {active && (
+                      <motion.div
+                        layoutId="active-pill"
+                        className="absolute left-0 top-0 bottom-0 w-1 bg-primary-blue rounded-r-full"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
                   </Link>
-                </li>
+                </motion.li>
               );
             })}
-          </ul>
+          </motion.ul>
         </nav>
 
-        <div className="border-t border-navy-800 p-4">
+        {/* Footer - Logout */}
+        <div className="border-t border-white/10 p-4">
           <Link
             to="/logout"
-            className="flex items-center px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center px-4 py-2.5 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-all duration-200"
           >
             <LogOut className="w-5 h-5 mr-3" />
-            <span className="text-sm font-medium">Cerrar Sesion</span>
+            <span className="text-sm font-medium">Cerrar Sesión</span>
           </Link>
         </div>
       </aside>
