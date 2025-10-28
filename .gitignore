@@ -1,0 +1,14 @@
+nul
+.claude/
+node_modules/
+vendor/
+.env
+.env.local
+*.log
+.DS_Store
+*.swp
+*.swo
+*~
+/Aplicacion Juridica/node_modules/
+/Aplicacion Juridica/vendor/
+/Aplicacion Juridica/.env
