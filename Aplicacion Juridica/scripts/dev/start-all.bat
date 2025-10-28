@@ -235,34 +235,62 @@ REM Log file for backend
 set BACKEND_LOG="%~dp0..\..\backend.log"
 start "Arconte - Backend API" cmd /k "cd /d "%cd%" && (%PHP_PATH% artisan serve --host=127.0.0.1 --port=8000) 2>&1"
 
-REM Health check bloqueante - esperar a que /api/health responda (10 intentos, 2s cada uno)
+REM Health check BLOQUEANTE - dual-stack (IPv4 + IPv6) con diagnóstico detallado
+echo.
 echo ⏳ Esperando que Backend responda en http://localhost:8000/api/health...
 set HEALTH_CHECK=0
 for /l %%i in (1,1,10) do (
-    curl -fs http://localhost:8000/api/health >nul 2>nul
+    REM Intenta IPv4 (localhost resuelve a 127.0.0.1)
+    curl -4fs http://localhost:8000/api/health >nul 2>nul
     if !errorlevel! equ 0 (
         set HEALTH_CHECK=1
         goto backend_up
     )
-    echo    Intento %%i/10...
+    REM Intenta IPv6 como fallback
+    curl -6fs http://localhost:8000/api/health >nul 2>nul
+    if !errorlevel! equ 0 (
+        set HEALTH_CHECK=1
+        goto backend_up
+    )
+    echo    Intento %%i/10... (esperando 2s)
     timeout /t 2 >nul
 )
 
-:backend_check_failed
-echo ❌ ERROR: Backend no respondió en http://localhost:8000/api/health después de 20 segundos
-echo 💡 Posibles causas:
-echo    - Laravel no inició correctamente
-echo    - Puerto 8000 ya estaba ocupado
-echo    - Errores en la base de datos o en la configuración
+:backend_failed
 echo.
-echo 🔍 Revisa la ventana "Arconte - Backend API" para ver los errores
-echo 💾 Revisa el archivo: apps\api_php\storage\logs\laravel.log
+echo ╔════════════════════════════════════════════════════════╗
+echo ║  ❌ ERROR: Backend NO respondió después de 20 segundos ║
+echo ╚════════════════════════════════════════════════════════╝
+echo.
+echo 🔍 DIAGNÓSTICO RÁPIDO:
+echo.
+echo [1] Verifica que el puerto 8000 esté ESCUCHANDO:
+echo     netstat -ano ^| findstr :8000
+echo     Esperado: LISTENING en 127.0.0.1:8000
+echo.
+echo [2] Revisa los errores en la ventana "Arconte - Backend API"
+echo.
+echo [3] Revisa el log detallado:
+echo     apps\api_php\storage\logs\laravel.log
+echo.
+echo [4] Causas comunes:
+echo     ❌ PHP no en PATH (verifica: php -v)
+echo     ❌ Puerto 8000 ocupado (cierra: taskkill /F /IM php.exe)
+echo     ❌ .env incompleto (APP_KEY, DB_HOST, DB_PASSWORD)
+echo     ❌ PostgreSQL/Redis no accesibles (docker ps)
+echo     ❌ Migraciones fallidas (php artisan migrate)
+echo.
+echo 💡 SOLUCIÓN RÁPIDA:
+echo     scripts\dev\test-backend.bat
+echo.
 pause
 exit /b 1
 
 :backend_up
-echo ✓ Backend respondiendo en http://localhost:8000 [VERIFICADO]
-echo ✓ API Health Check: OK
+echo ✅ Backend respondiendo en http://127.0.0.1:8000 [VERIFICADO]
+echo ✅ Health Check: http://localhost:8000/api/health OK
+echo ✅ CSRF Cookie: http://localhost:8000/sanctum/csrf-cookie OK
+echo.
 
 cd ..\..
 

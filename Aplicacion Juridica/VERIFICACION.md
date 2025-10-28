@@ -379,6 +379,127 @@ Solución:
 2. Verifica que no hay errores en la Ventana 3
 3. Aumenta el timeout si los jobs toman mucho tiempo
 
+## 🚨 ON_REFUSED — Solución rápida para ERR_CONNECTION_REFUSED
+
+Si ves errores como `ERR_CONNECTION_REFUSED` al acceder a `http://localhost:3000/login`:
+
+### Paso 1: Verificar que backend está corriendo
+
+Abre una terminal y ejecuta:
+
+```cmd
+netstat -ano | findstr :8000
+```
+
+✅ **Esperado:** Línea con `LISTENING` en `127.0.0.1:8000`
+
+❌ **Si no aparece:** El backend NO está corriendo
+
+**Solución:**
+```cmd
+cd apps\api_php
+php artisan serve --host=127.0.0.1 --port=8000
+```
+
+Espera a ver:
+```
+Laravel development server started: http://127.0.0.1:8000
+```
+
+---
+
+### Paso 2: Health check manual
+
+Desde otra terminal, verifica que el backend responde:
+
+```cmd
+curl http://localhost:8000/api/health
+```
+
+✅ **Esperado:**
+```json
+{"status":"ok",...}
+```
+
+❌ **Si falla (Connection refused):**
+- El backend no inició correctamente
+- Revisa los errores en la terminal del backend
+- Verifica `apps/api_php/storage/logs/laravel.log`
+
+---
+
+### Paso 3: Verificar CSRF Cookie
+
+```cmd
+curl -I http://localhost:8000/sanctum/csrf-cookie
+```
+
+✅ **Esperado:**
+```
+HTTP/1.1 204 No Content
+Set-Cookie: XSRF-TOKEN=...; ...
+```
+
+Si NO hay `Set-Cookie`:
+- Verifica que `SESSION_SECURE_COOKIE=false` en `.env`
+- Verifica CORS en `config/cors.php`
+- Reinicia el backend
+
+---
+
+### Paso 4: Diagnóstico automático
+
+En la raíz del proyecto, ejecuta:
+
+```cmd
+test-backend.bat
+```
+
+Este script:
+1. ✅ Verifica PHP en PATH
+2. ✅ Verifica puerto 8000 libre
+3. ✅ Verifica PostgreSQL activo
+4. ✅ Verifica .env existe
+5. ✅ Verifica APP_KEY
+6. ✅ Inicia backend automáticamente
+7. ✅ Realiza health check
+
+---
+
+### Paso 5: Comprobar configuración
+
+**Archivo:** `apps/api_php/.env`
+```
+APP_URL=http://127.0.0.1:8000   # O http://localhost:8000
+SESSION_DRIVER=database
+SESSION_SECURE_COOKIE=false     # CRÍTICO para localhost
+SANCTUM_STATEFUL_DOMAINS=localhost:3000,127.0.0.1:3000
+```
+
+**Archivo:** `apps/web/.env`
+```
+VITE_API_URL=http://localhost:8000/api
+VITE_APP_URL=http://localhost:3000
+```
+
+Si cambias el puerto del backend:
+1. Actualiza `APP_URL` en `apps/api_php/.env`
+2. Actualiza `VITE_API_URL` en `apps/web/.env`
+3. Reinicia ambos servicios:
+   ```cmd
+   taskkill /F /IM php.exe && taskkill /F /IM node.exe
+   npm run dev        # desde apps/web
+   php artisan serve  # desde apps/api_php
+   ```
+
+---
+
+### Nota sobre manifest.json
+
+El error `404 Failed to load /manifest.json` es NORMAL y no afecta al login. Es un archivo para PWA que no es crítico.
+
+---
+
 ## 📊 Checklist de Verificación
 
 - [ ] Backend responde en puerto 8000
