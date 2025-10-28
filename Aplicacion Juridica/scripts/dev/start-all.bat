@@ -233,26 +233,36 @@ echo.
 echo 🚀 Iniciando servidor Laravel...
 REM Log file for backend
 set BACKEND_LOG="%~dp0..\..\backend.log"
-start "Arconte - Backend API" cmd /k "cd /d "%cd%" && (php artisan serve --host=0.0.0.0 --port=8000) 2>&1 | tee %BACKEND_LOG%"
+start "Arconte - Backend API" cmd /k "cd /d "%cd%" && (%PHP_PATH% artisan serve --host=127.0.0.1 --port=8000) 2>&1"
 
-REM Esperar a que el servidor inicie y verificar
-echo ⏳ Esperando que Laravel inicie (5s)...
-timeout /t 5 /nobreak >nul
-
-REM Verificar que el puerto 8000 esté escuchando
-netstat -ano | findstr ":8000" | findstr "LISTENING" >nul 2>&1
-if errorlevel 1 (
-    echo ❌ ERROR: Backend no inició en el puerto 8000
-    echo 💡 Revisa la ventana "Arconte - Backend API" para ver errores
-    if exist %BACKEND_LOG% (
-        echo.
-        echo Últimas líneas del log:
-        type %BACKEND_LOG%
+REM Health check bloqueante - esperar a que /api/health responda (10 intentos, 2s cada uno)
+echo ⏳ Esperando que Backend responda en http://localhost:8000/api/health...
+set HEALTH_CHECK=0
+for /l %%i in (1,1,10) do (
+    curl -fs http://localhost:8000/api/health >nul 2>nul
+    if !errorlevel! equ 0 (
+        set HEALTH_CHECK=1
+        goto backend_up
     )
-    pause
-    exit /b 1
+    echo    Intento %%i/10...
+    timeout /t 2 >nul
 )
-echo ✓ Backend: http://localhost:8000 [VERIFICADO]
+
+:backend_check_failed
+echo ❌ ERROR: Backend no respondió en http://localhost:8000/api/health después de 20 segundos
+echo 💡 Posibles causas:
+echo    - Laravel no inició correctamente
+echo    - Puerto 8000 ya estaba ocupado
+echo    - Errores en la base de datos o en la configuración
+echo.
+echo 🔍 Revisa la ventana "Arconte - Backend API" para ver los errores
+echo 💾 Revisa el archivo: apps\api_php\storage\logs\laravel.log
+pause
+exit /b 1
+
+:backend_up
+echo ✓ Backend respondiendo en http://localhost:8000 [VERIFICADO]
+echo ✓ API Health Check: OK
 
 cd ..\..
 

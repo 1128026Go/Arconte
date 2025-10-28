@@ -43,9 +43,80 @@ VITE_APP_URL=http://localhost:3000
 
 ## 🧪 Procedimiento de Verificación
 
-### Paso 0: Verificar Jobs en BD
+### Paso 0: Backend UP (Verificación de Accesibilidad)
 
-Antes de iniciar, verifica que la tabla `jobs` existe:
+Antes de hacer cualquier cosa, asegúrate de que el backend está corriendo y accesible:
+
+#### 1. Health Check del Backend
+
+Abre una terminal/PowerShell y ejecuta:
+
+```cmd
+curl -I http://localhost:8000/api/health
+```
+
+✅ **Resultado esperado:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+...
+```
+
+Si recibes `Connection refused` o `ERR_CONNECTION_REFUSED`:
+- El backend **NO está corriendo**
+- Ejecuta el script `scripts/dev/start-all.bat` o inicia manualmente:
+  ```cmd
+  cd apps/api_php
+  php artisan serve --host=127.0.0.1 --port=8000
+  ```
+
+#### 2. Verificar Cookie XSRF-TOKEN
+
+El endpoint `/sanctum/csrf-cookie` debe devolver la cookie:
+
+```cmd
+curl -I http://localhost:8000/sanctum/csrf-cookie
+```
+
+✅ **Resultado esperado:**
+```
+HTTP/1.1 204 No Content
+Set-Cookie: XSRF-TOKEN=...; ...
+```
+
+Si NO hay `Set-Cookie`:
+- Verifica que `SESSION_SECURE_COOKIE=false` en `.env`
+- Verifica CORS en `config/cors.php`
+
+#### 3. Verificar Autenticación
+
+Con una sesión válida (después de login):
+
+```cmd
+curl -b "arconte_session=YOUR_SESSION_VALUE" http://localhost:8000/api/auth/me
+```
+
+✅ **Resultado esperado:**
+```json
+{
+  "user": {
+    "id": 4,
+    "name": "Admin Demo",
+    "email": "admin@arconte.app"
+  }
+}
+```
+
+**Nota:** Si cambias el puerto del backend, actualiza `VITE_API_URL` en `apps/web/.env` y reinicia `npm run dev`:
+```env
+VITE_API_URL=http://localhost:NUEVO_PUERTO/api
+```
+
+---
+
+### Paso 0a: Verificar Jobs en BD
+
+Después de confirmar que el backend está UP, verifica que la tabla `jobs` existe:
 
 ```cmd
 cd apps/api_php
@@ -70,44 +141,59 @@ php artisan tinker -q
 
 ### Paso 1: Iniciar los servicios
 
-Abre **3 ventanas cmd** y ejecuta:
+#### Opción A: Usar el script automático (RECOMENDADO)
+
+Ejecuta desde el directorio raíz del proyecto:
+```cmd
+scripts\dev\start-all.bat
+```
+
+Este script:
+- ✅ Inicia PostgreSQL y Redis (Docker)
+- ✅ Inicia Backend Laravel (puerto 8000)
+- ✅ **Realiza health check automático** (`/api/health`)
+- ✅ Inicia Queue Worker (procesa jobs)
+- ✅ Inicia Frontend React (puerto 3000)
+- ✅ Muestra credenciales y links de acceso
+
+Si el health check falla, el script se detiene y muestra el error en el log.
+
+---
+
+#### Opción B: Iniciar manualmente (3 ventanas cmd)
+
+Si prefieres o necesitas debugging:
 
 **Ventana 1 - Backend:**
 ```cmd
 cd apps/api_php
-php artisan serve --host=0.0.0.0 --port=8000
+php artisan serve --host=127.0.0.1 --port=8000
 ```
+Espera a ver: `Laravel development server started at http://127.0.0.1:8000`
 
 **Ventana 2 - Frontend:**
 ```cmd
 cd apps/web
 npm run dev
 ```
+Espera a ver: `VITE v... ready in ... ms`
 
 **Ventana 3 - Queue Worker (CRÍTICO para jobs asíncronos):**
 ```cmd
 cd apps/api_php
 php artisan queue:work --tries=3 --timeout=300
 ```
+Espera a ver: `Listening for jobs`
 
-**Nota:** El comando usa `php` (debe estar en PATH). Si usas Herd, asegúrate de que Herd PHP está en PATH o reemplaza `php` con `%USERPROFILE%\.config\herd\bin\php`
+**Nota:** El comando usa `php` (debe estar en PATH). Si usas Herd, asegúrate de que Herd PHP está en PATH.
 
-### Paso 2: Verificar Backend
-
-Abre en el navegador: **http://localhost:8000/api/health**
-
-✅ **Resultado esperado:**
-```json
-{"status":"ok"}
-```
-
-### Paso 3: Verificar Frontend
+### Paso 2: Verificar Frontend
 
 Abre en el navegador: **http://localhost:3000**
 
 ✅ **Resultado esperado:** Página de login visible
 
-### Paso 4: Login con Credenciales de Prueba
+### Paso 3: Login con Credenciales de Prueba
 
 Abre: **http://localhost:3000/login**
 
@@ -126,7 +212,7 @@ Usa cualquiera de estas credenciales:
 - Redirige a dashboard
 - URL cambia a http://localhost:3000/dashboard
 
-### Paso 5: Verificar Cookies
+### Paso 4: Verificar Cookies
 
 1. Abre **DevTools** (F12)
 2. Ve a pestaña **"Application"**
@@ -138,7 +224,7 @@ Deberías ver:
 - **arconte_session** - Cookie de sesión
 - **XSRF-TOKEN** - Token CSRF
 
-### Paso 6: Verificar API Authentication
+### Paso 5: Verificar API Authentication
 
 1. En DevTools, ve a pestaña **"Console"**
 2. Copia y ejecuta este código:
@@ -202,9 +288,9 @@ fetch('http://localhost:8000/api/auth/me', {
 
 ## 🔄 Prueba de Jobs Asíncronos (Database Driver)
 
-**IMPORTANTE:** El Queue Worker debe estar corriendo en la Ventana 3
+**IMPORTANTE:** El Queue Worker debe estar corriendo (incluido en `start-all.bat`)
 
-### Paso 1: Verificar tabla de jobs
+### Paso A: Verificar tabla de jobs
 
 ```cmd
 cd apps/api_php
@@ -215,7 +301,7 @@ php artisan migrate:status | findstr jobs
 - Tabla `jobs` debe estar en la lista
 - Status: Migrated
 
-### Paso 2: Verificar driver en Tinker
+### Paso B: Verificar driver en Tinker
 
 ```cmd
 cd apps/api_php
@@ -227,10 +313,12 @@ php artisan tinker -q
 >>> exit
 ```
 
-### Paso 3: Prueba de extremo a extremo
+### Paso C: Prueba de extremo a extremo
 
-1. **Inicia los servicios** (3 ventanas cmd):
-   - Ventana 1: `cd apps/api_php && php artisan serve --host=0.0.0.0 --port=8000`
+Si usaste `start-all.bat`, todos los servicios ya están corriendo. Si inicias manualmente:
+
+1. **Abre 3 ventanas cmd:**
+   - Ventana 1: `cd apps/api_php && php artisan serve --host=127.0.0.1 --port=8000`
    - Ventana 2: `cd apps/web && npm run dev`
    - Ventana 3: `cd apps/api_php && php artisan queue:work --tries=3 --timeout=300`
 
