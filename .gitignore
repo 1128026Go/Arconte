@@ -10,7 +10,14 @@ vendor/
 # Ignorar directorios y archivos genéricos pero permitir configuraciones críticas
 /Aplicacion Juridica/node_modules/
 /Aplicacion Juridica/vendor/
+# Ignorar archivos duplicados en el root (mantener en Aplicacion Juridica/)
+/apps/
+/scripts/
+/start-all.bat
+/VERIFICATION_CHECKLIST.md
 # Permitir .env y config de Aplicacion Juridica
 !/Aplicacion Juridica/.env
 !/Aplicacion Juridica/apps/api_php/.env
 !/Aplicacion Juridica/apps/api_php/config/
+!/Aplicacion Juridica/scripts/dev/start-all.bat
+!/Aplicacion Juridica/VERIFICACION.md
