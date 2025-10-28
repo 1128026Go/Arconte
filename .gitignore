@@ -2,13 +2,15 @@ nul
 .claude/
 node_modules/
 vendor/
-.env
-.env.local
 *.log
 .DS_Store
 *.swp
 *.swo
 *~
+# Ignorar directorios y archivos genéricos pero permitir configuraciones críticas
 /Aplicacion Juridica/node_modules/
 /Aplicacion Juridica/vendor/
-/Aplicacion Juridica/.env
+# Permitir .env y config de Aplicacion Juridica
+!/Aplicacion Juridica/.env
+!/Aplicacion Juridica/apps/api_php/.env
+!/Aplicacion Juridica/apps/api_php/config/
